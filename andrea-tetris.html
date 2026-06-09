@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Andrea Tetris — 30 Pieces Challenge</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1b2a;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;font-family:'Press Start 2P',cursive}
+#wrap{display:flex;gap:20px;align-items:flex-start;padding:16px}
+#gameCanvas{border:3px solid #00aeef;box-shadow:0 0 30px rgba(0,174,239,0.5),0 0 60px rgba(0,174,239,0.15);display:block;background:#060e18}
+#right{width:148px;display:flex;flex-direction:column;gap:10px}
+.panel{background:#0f2236;border:2px solid #00aeef;border-radius:8px;padding:10px;text-align:center}
+.panel-title{font-size:7px;color:#00aeef;margin-bottom:6px;letter-spacing:1px}
+.panel-value{font-size:20px;color:#fff;line-height:1.2}
+.panel-value.big{font-size:28px;color:#f5a623}
+.panel-value.purple{font-size:28px;color:#a855f7}
+#nextCanvas{display:block;margin:0 auto;background:#060e18;border:1px solid #1a3a55;border-radius:4px}
+.andrea-panel{background:#0f2236;border:2px solid #a855f7;border-radius:8px;padding:10px;text-align:center}
+.andrea-av{width:52px;height:52px;border-radius:50%;overflow:hidden;border:3px solid #a855f7;margin:0 auto 6px;box-shadow:0 0 15px rgba(168,85,247,0.5)}
+.andrea-av img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.andrea-name{font-size:6px;color:#a855f7;letter-spacing:1px}
+.andrea-role{font-size:5px;color:#555;margin-top:2px}
+.pieces-bar-wrap{background:#060e18;border-radius:4px;height:7px;overflow:hidden;margin-top:6px;border:1px solid #1a3a55}
+.pieces-bar{height:100%;background:linear-gradient(90deg,#00aeef,#a855f7);border-radius:4px;transition:width .3s}
+#overlay{position:fixed;inset:0;background:rgba(6,14,24,0.95);display:flex;align-items:center;justify-content:center;z-index:100}
+.card{background:#0f2236;border:3px solid #00aeef;border-radius:16px;padding:26px 34px;text-align:center;max-width:430px;width:92%;box-shadow:0 0 40px rgba(0,174,239,0.35),0 0 80px rgba(0,174,239,0.1)}
+.card-title{font-size:16px;color:#00aeef;margin-bottom:2px;text-shadow:0 0 20px rgba(0,174,239,0.8)}
+.card-sub{font-size:7px;color:#a855f7;letter-spacing:2px;margin-bottom:14px}
+.andrea-big{width:70px;height:70px;border-radius:50%;overflow:hidden;border:4px solid #a855f7;margin:0 auto 10px;box-shadow:0 0 25px rgba(168,85,247,0.5)}
+.andrea-big img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.rules-box{background:rgba(0,174,239,0.08);border:1px solid rgba(0,174,239,0.25);border-radius:8px;padding:12px;margin-bottom:14px;font-family:'Nunito',sans-serif;font-size:13px;color:#aac;line-height:1.9;text-align:left}
+.rules-box b{color:#00aeef}
+.rules-box .highlight{color:#a855f7;font-weight:800}
+.controls{font-size:6px;color:#446;margin-bottom:14px;line-height:2.4;border-top:1px solid #1a3a55;padding-top:12px}
+.play-btn{background:linear-gradient(135deg,#00aeef,#0077b6);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-family:'Press Start 2P',cursive;font-size:11px;cursor:pointer;letter-spacing:1px;transition:transform .1s,box-shadow .1s;box-shadow:0 5px 20px rgba(0,174,239,0.5)}
+.play-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,174,239,0.7)}
+.play-btn:active{transform:scale(.97)}
+.big-lines{font-size:48px;color:#00aeef;margin:6px 0 2px;text-shadow:0 0 20px rgba(0,174,239,0.8);line-height:1}
+.lines-label{font-size:9px;color:#a855f7;letter-spacing:2px;margin-bottom:8px}
+.big-score{font-size:22px;color:#f5a623;margin-bottom:8px}
+.result-stats{display:flex;gap:8px;margin:10px 0}
+.rs{background:rgba(0,174,239,0.12);border:1px solid rgba(0,174,239,0.25);border-radius:6px;padding:8px;flex:1}
+.rs-num{font-size:14px;color:#fff}
+.rs-label{font-size:5px;color:#557;margin-top:4px;letter-spacing:1px}
+.rating{font-size:28px;margin-bottom:4px}
+.rating-text{font-size:7px;color:#00aeef;margin-bottom:12px;line-height:1.9}
+.share-box{background:rgba(0,0,0,0.35);border:1px solid #1a3a55;border-radius:8px;padding:10px;margin-bottom:12px;font-family:'Nunito',sans-serif;font-size:12px;color:#778;line-height:1.7}
+.share-score{font-size:15px;color:#00aeef;font-weight:800;margin:4px 0;font-family:'Press Start 2P',cursive}
+</style>
+</head>
+<body>
+<div id="overlay">
+  <div class="card" id="startCard">
+    <div class="card-title">ANDREA TETRIS</div>
+    <div class="card-sub">30 PIECES CHALLENGE</div>
+    <div class="andrea-big"><img src="" id="andreaStart" alt="Andrea"/></div>
+    <div class="rules-box">
+      🟣 You get exactly <b>30 Andrea pieces</b><br>
+      📏 Clear as many <b class="highlight">LINES</b> as possible<br>
+      🏆 Most lines <b>wins</b> — post your score!<br>
+      📣 Drop result in <b>#belote-internal</b>
+    </div>
+    <div class="controls">
+      ← →&nbsp;&nbsp; Move &nbsp;&nbsp;&nbsp; ↑ Rotate<br>
+      ↓ Soft drop &nbsp;&nbsp; SPACE Hard drop
+    </div>
+    <button class="play-btn" onclick="startGame()">LET'S GO! 🟣</button>
+  </div>
+  <div class="card" id="endCard" style="display:none">
+    <div class="card-title">CHALLENGE DONE!</div>
+    <div class="andrea-big"><img src="" id="andreaEnd" alt="Andrea"/></div>
+    <div class="big-lines" id="finalLines">0</div>
+    <div class="lines-label">LINES CLEARED</div>
+    <div class="big-score">Score: <span id="finalScore">0</span></div>
+    <div class="rating" id="ratingEmoji">😂</div>
+    <div class="rating-text" id="ratingText"></div>
+    <div class="result-stats">
+      <div class="rs"><div class="rs-num" id="endLines">0</div><div class="rs-label">LINES</div></div>
+      <div class="rs"><div class="rs-num" id="endScore">0</div><div class="rs-label">SCORE</div></div>
+      <div class="rs"><div class="rs-num" id="endTetris">0</div><div class="rs-label">TETRISES</div></div>
+    </div>
+    <div class="share-box">
+      📣 Post to #belote-internal:<br>
+      <div class="share-score" id="shareText"></div>
+    </div>
+    <button class="play-btn" onclick="startGame()">TRY AGAIN 🟣</button>
+  </div>
+</div>
+
+<div id="wrap">
+  <div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+  <div id="right">
+    <div class="andrea-panel">
+      <div class="andrea-av"><img src="" id="andreaHud" alt="Andrea"/></div>
+      <div class="andrea-name">ANDREA</div>
+      <div class="andrea-role">ALL PIECES</div>
+      <div class="pieces-bar-wrap"><div class="pieces-bar" id="piecesBar" style="width:100%"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">PIECES LEFT</div>
+      <div class="panel-value purple" id="piecesEl">30</div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">LINES</div>
+      <div class="panel-value big" id="linesEl">0</div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">SCORE</div>
+      <div class="panel-value" style="font-size:14px" id="scoreEl">0</div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">NEXT</div>
+      <canvas id="nextCanvas" width="88" height="72"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+var ANDREA_SRC = 'data:image/jpeg;base64,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';
+['andreaStart','andreaEnd','andreaHud'].forEach(function(id){
+  var el=document.getElementById(id); if(el) el.src=ANDREA_SRC;
+});
+var andreaImg=new Image(); andreaImg.src=ANDREA_SRC;
+
+var COLS=10, ROWS=20, BLOCK=30;
+var TOTAL_PIECES=30;
+var canvas=document.getElementById('gameCanvas');
+canvas.width=COLS*BLOCK; canvas.height=ROWS*BLOCK;
+var ctx=canvas.getContext('2d');
+var nctx=document.getElementById('nextCanvas').getContext('2d');
+
+var SHAPES=[
+  [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  [[1,1],[1,1]],
+  [[0,1,0],[1,1,1],[0,0,0]],
+  [[0,1,1],[1,1,0],[0,0,0]],
+  [[1,1,0],[0,1,1],[0,0,0]],
+  [[1,0,0],[1,1,1],[0,0,0]],
+  [[0,0,1],[1,1,1],[0,0,0]],
+];
+
+var board,currentPiece,nextPiece,score,lines,tetrises,piecesLeft,gameRunning,dropTimer,dropInterval,animFrame,lastTime;
+
+function createBoard(){
+  var b=[];
+  for(var r=0;r<ROWS;r++){b.push([]);for(var c=0;c<COLS;c++)b[r].push(0);}
+  return b;
+}
+
+function randomPiece(){
+  var shape=SHAPES[Math.floor(Math.random()*SHAPES.length)].map(function(r){return r.slice();});
+  return {shape:shape, x:Math.floor(COLS/2)-Math.floor(shape[0].length/2), y:0};
+}
+
+function isValid(piece,ox,oy,shape){
+  shape=shape||piece.shape;
+  ox=(ox===undefined)?piece.x:ox;
+  oy=(oy===undefined)?piece.y:oy;
+  for(var r=0;r<shape.length;r++)
+    for(var c=0;c<shape[r].length;c++)
+      if(shape[r][c]){
+        var nx=ox+c, ny=oy+r;
+        if(nx<0||nx>=COLS||ny>=ROWS) return false;
+        if(ny>=0&&board[ny][nx]) return false;
+      }
+  return true;
+}
+
+function rotatePiece(shape){
+  var N=shape.length, M=shape[0].length, rot=[];
+  for(var c=0;c<M;c++){rot.push([]);for(var r=N-1;r>=0;r--)rot[c].push(shape[r][c]);}
+  return rot;
+}
+
+function lockPiece(){
+  for(var r=0;r<currentPiece.shape.length;r++)
+    for(var c=0;c<currentPiece.shape[r].length;c++)
+      if(currentPiece.shape[r][c]){
+        var ny=currentPiece.y+r;
+        if(ny<0){endGame();return;}
+        board[ny][currentPiece.x+c]=1;
+      }
+  clearLines();
+  piecesLeft--;
+  updatePiecesUI();
+  if(piecesLeft<=0){endGame();return;}
+  currentPiece=nextPiece;
+  nextPiece=randomPiece();
+  if(!isValid(currentPiece)){endGame();return;}
+}
+
+function clearLines(){
+  var cleared=0;
+  for(var r=ROWS-1;r>=0;r--){
+    var full=true;
+    for(var c=0;c<COLS;c++) if(!board[r][c]){full=false;break;}
+    if(full){board.splice(r,1);board.unshift(new Array(COLS).fill(0));cleared++;r++;}
+  }
+  if(cleared>0){
+    var pts=[0,100,300,500,800];
+    score+=pts[Math.min(cleared,4)];
+    lines+=cleared;
+    if(cleared===4) tetrises++;
+    // Speed increases every 3 lines, starts fast
+    dropInterval=Math.max(80,380-Math.floor(lines/3)*25);
+    document.getElementById('scoreEl').textContent=score;
+    document.getElementById('linesEl').textContent=lines;
+  }
+}
+
+function updatePiecesUI(){
+  document.getElementById('piecesEl').textContent=piecesLeft;
+  document.getElementById('piecesBar').style.width=((piecesLeft/TOTAL_PIECES)*100)+'%';
+  var el=document.getElementById('piecesEl');
+  if(piecesLeft<=5) el.style.color='#e94560';
+  else if(piecesLeft<=10) el.style.color='#f5a623';
+  else el.style.color='#a855f7';
+}
+
+function getGhostY(){
+  var gy=currentPiece.y;
+  while(isValid(currentPiece,currentPiece.x,gy+1)) gy++;
+  return gy;
+}
+
+function drawAndreaBlock(context,x,y,sz,ghost){
+  context.save();
+  context.beginPath();
+  context.rect(x+1,y+1,sz-2,sz-2);
+  context.clip();
+  if(!ghost && andreaImg.complete && andreaImg.naturalWidth>0){
+    context.drawImage(andreaImg,x-sz*0.05,y-sz*0.05,sz*1.1,sz*1.1);
+    // Blue tint matching the room
+    context.fillStyle='rgba(0,174,239,0.15)';
+    context.fillRect(x+1,y+1,sz-2,sz-2);
+  } else {
+    context.fillStyle=ghost?'rgba(0,174,239,0.08)':'rgba(168,85,247,0.7)';
+    context.fillRect(x+1,y+1,sz-2,sz-2);
+  }
+  context.restore();
+  // Border — blue for active, purple for locked, faint for ghost
+  if(ghost){
+    context.strokeStyle='rgba(0,174,239,0.25)';
+    context.lineWidth=1;
+  } else {
+    context.strokeStyle='rgba(0,174,239,0.7)';
+    context.lineWidth=1.5;
+  }
+  context.strokeRect(x+1,y+1,sz-2,sz-2);
+  // Shine
+  if(!ghost){
+    context.fillStyle='rgba(255,255,255,0.18)';
+    context.fillRect(x+2,y+2,sz-4,3);
+    context.fillRect(x+2,y+2,3,sz-4);
+  }
+}
+
+function drawBoard(){
+  ctx.fillStyle='#060e18';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Grid lines — subtle blue tint
+  ctx.strokeStyle='rgba(0,174,239,0.06)';
+  ctx.lineWidth=0.5;
+  for(var c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*BLOCK,0);ctx.lineTo(c*BLOCK,canvas.height);ctx.stroke();}
+  for(var r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*BLOCK);ctx.lineTo(canvas.width,r*BLOCK);ctx.stroke();}
+
+  // Locked blocks
+  for(var row=0;row<ROWS;row++)
+    for(var col=0;col<COLS;col++)
+      if(board[row][col]) drawAndreaBlock(ctx,col*BLOCK,row*BLOCK,BLOCK,false);
+
+  // Ghost
+  var gy=getGhostY();
+  if(gy>currentPiece.y)
+    for(var r=0;r<currentPiece.shape.length;r++)
+      for(var c=0;c<currentPiece.shape[r].length;c++)
+        if(currentPiece.shape[r][c])
+          drawAndreaBlock(ctx,(currentPiece.x+c)*BLOCK,(gy+r)*BLOCK,BLOCK,true);
+
+  // Current piece
+  for(var r=0;r<currentPiece.shape.length;r++)
+    for(var c=0;c<currentPiece.shape[r].length;c++)
+      if(currentPiece.shape[r][c])
+        drawAndreaBlock(ctx,(currentPiece.x+c)*BLOCK,(currentPiece.y+r)*BLOCK,BLOCK,false);
+
+  // Low pieces warning flash
+  if(piecesLeft<=5 && Math.floor(Date.now()/350)%2===0){
+    ctx.fillStyle='rgba(233,69,96,0.06)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+}
+
+function drawNext(){
+  nctx.fillStyle='#060e18';
+  nctx.fillRect(0,0,88,72);
+  var shape=nextPiece.shape;
+  var bs=16;
+  var ox=Math.floor((5-shape[0].length)/2);
+  var oy=Math.floor((4-shape.length)/2);
+  for(var r=0;r<shape.length;r++)
+    for(var c=0;c<shape[r].length;c++)
+      if(shape[r][c])
+        drawAndreaBlock(nctx,(ox+c)*bs+4,(oy+r)*bs+4,bs,false);
+}
+
+var keyState={};
+document.addEventListener('keydown',function(e){
+  if(!gameRunning) return;
+  if(keyState[e.code]) return;
+  keyState[e.code]=true;
+  switch(e.code){
+    case 'ArrowLeft':
+      if(isValid(currentPiece,currentPiece.x-1,currentPiece.y)) currentPiece.x--;
+      break;
+    case 'ArrowRight':
+      if(isValid(currentPiece,currentPiece.x+1,currentPiece.y)) currentPiece.x++;
+      break;
+    case 'ArrowDown':
+      if(isValid(currentPiece,currentPiece.x,currentPiece.y+1)){currentPiece.y++;score+=1;document.getElementById('scoreEl').textContent=score;}
+      break;
+    case 'ArrowUp':
+      var rot=rotatePiece(currentPiece.shape);
+      if(isValid(currentPiece,currentPiece.x,currentPiece.y,rot)) currentPiece.shape=rot;
+      else if(isValid(currentPiece,currentPiece.x+1,currentPiece.y,rot)){currentPiece.shape=rot;currentPiece.x++;}
+      else if(isValid(currentPiece,currentPiece.x-1,currentPiece.y,rot)){currentPiece.shape=rot;currentPiece.x--;}
+      break;
+    case 'Space':
+      e.preventDefault();
+      while(isValid(currentPiece,currentPiece.x,currentPiece.y+1)){currentPiece.y++;score+=2;}
+      lockPiece();
+      document.getElementById('scoreEl').textContent=score;
+      break;
+  }
+});
+document.addEventListener('keyup',function(e){ keyState[e.code]=false; });
+
+function gameLoop(timestamp){
+  if(!gameRunning) return;
+  var dt=timestamp-(lastTime||timestamp);
+  lastTime=timestamp;
+  dropTimer=(dropTimer||0)+dt;
+  if(dropTimer>=dropInterval){
+    dropTimer=0;
+    if(!isValid(currentPiece,currentPiece.x,currentPiece.y+1)) lockPiece();
+    else currentPiece.y++;
+  }
+  drawBoard();
+  drawNext();
+  animFrame=requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  board=createBoard();
+  score=0;lines=0;tetrises=0;
+  piecesLeft=TOTAL_PIECES;
+  dropTimer=0;dropInterval=380;lastTime=0;
+  currentPiece=randomPiece();
+  nextPiece=randomPiece();
+  gameRunning=true;keyState={};
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('scoreEl').textContent=0;
+  document.getElementById('linesEl').textContent=0;
+  document.getElementById('piecesEl').textContent=TOTAL_PIECES;
+  document.getElementById('piecesEl').style.color='#a855f7';
+  document.getElementById('piecesBar').style.width='100%';
+  if(animFrame) cancelAnimationFrame(animFrame);
+  animFrame=requestAnimationFrame(gameLoop);
+}
+
+function endGame(){
+  gameRunning=false;
+  cancelAnimationFrame(animFrame);
+  document.getElementById('finalLines').textContent=lines;
+  document.getElementById('finalScore').textContent=score;
+  document.getElementById('endLines').textContent=lines;
+  document.getElementById('endScore').textContent=score;
+  document.getElementById('endTetris').textContent=tetrises;
+  var emoji,text;
+  if(lines>=20){emoji='🏆';text='TETRIS MASTER!\nAndrea bows to you.';}
+  else if(lines>=14){emoji='🟣';text='Incredible stacking!\nAndrea is impressed.';}
+  else if(lines>=8){emoji='😎';text='Pretty solid!\nAndrea approves.';}
+  else if(lines>=4){emoji='😅';text='Not bad...\nAndrea is judging you.';}
+  else if(lines>=1){emoji='😂';text='Andrea escaped\nmore than you cleared!';}
+  else{emoji='💀';text='0 lines?!\nAndrea wins. Forever.';}
+  document.getElementById('ratingEmoji').textContent=emoji;
+  document.getElementById('ratingText').textContent=text.replace(/\n/g,' ');
+  var share='Lines: '+lines+' | Score: '+score+(tetrises>0?' | Tetrises: '+tetrises:'');
+  document.getElementById('shareText').textContent=share;
+  document.getElementById('startCard').style.display='none';
+  document.getElementById('endCard').style.display='block';
+  document.getElementById('overlay').style.display='flex';
+}
+</script>
+</body>
+</html>
