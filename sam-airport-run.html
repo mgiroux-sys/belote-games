@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sam's Airport Run!</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Fredoka+One&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;overflow:hidden;width:100vw;height:100vh;user-select:none;cursor:none}
+canvas{display:block;position:absolute;top:0;left:0}
+#ui{position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:none}
+.hud{background:rgba(0,53,128,0.88);backdrop-filter:blur(6px);border-bottom:3px solid #FF6B00;padding:0 20px;height:52px;display:none;align-items:center;justify-content:space-between}
+.hud-block{text-align:center;min-width:80px}
+.hud-label{font-size:9px;color:rgba(255,255,255,0.65);letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+.hud-value{font-family:'Fredoka One',cursive;font-size:24px;color:#fff;line-height:1}
+.hud-title{font-family:'Fredoka One',cursive;font-size:15px;color:#fff;text-align:center;letter-spacing:1px}
+.hud-sub{font-size:9px;color:rgba(255,255,255,0.5);text-align:center;margin-top:1px}
+.key-hint{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);display:none;background:rgba(0,0,0,0.4);border-radius:10px;padding:6px 14px;font-size:11px;color:rgba(255,255,255,0.7);font-family:'Nunito',sans-serif;pointer-events:none;z-index:15;white-space:nowrap}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:20}
+.card{background:linear-gradient(160deg,#003580,#001f5b);border-radius:20px;padding:26px 34px;text-align:center;max-width:430px;width:92%;border:3px solid #FF6B00;box-shadow:0 0 40px rgba(255,107,0,0.3),0 20px 60px rgba(0,0,0,0.5)}
+.card-title{font-family:'Fredoka One',cursive;font-size:26px;color:#FF6B00;margin-bottom:2px;letter-spacing:1px}
+.card-sub{font-size:8px;color:rgba(255,255,255,0.45);letter-spacing:3px;margin-bottom:12px;text-transform:uppercase}
+.sam-av{width:72px;height:72px;border-radius:50%;overflow:hidden;border:4px solid #FF6B00;margin:0 auto 10px;box-shadow:0 0 25px rgba(255,107,0,0.5)}
+.sam-av img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.card p{font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px;line-height:1.8;font-family:'Nunito',sans-serif}
+.notice{background:rgba(255,107,0,0.15);border:1px solid rgba(255,107,0,0.4);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#FF6B00;font-family:'Nunito',sans-serif;line-height:1.7}
+.legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:12px}
+.legend-item{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);border-radius:6px;padding:5px 8px;font-size:11px;color:rgba(255,255,255,0.7);font-family:'Nunito',sans-serif}
+.play-btn{background:linear-gradient(135deg,#FF6B00,#cc5500);color:#fff;border:none;border-radius:50px;padding:12px 34px;font-family:'Fredoka One',cursive;font-size:20px;cursor:pointer;box-shadow:0 6px 20px rgba(255,107,0,0.4);transition:transform .1s;pointer-events:all;letter-spacing:1px}
+.play-btn:hover{transform:translateY(-2px)}
+.play-btn:active{transform:scale(.97)}
+.big-dist{font-family:'Fredoka One',cursive;font-size:52px;color:#FF6B00;line-height:1;margin-bottom:4px}
+.dist-label{font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase}
+.result-stats{display:flex;gap:8px;margin:10px 0}
+.rs{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;flex:1}
+.rs-num{font-family:'Fredoka One',cursive;font-size:20px;color:#fff}
+.rs-label{font-size:7px;color:rgba(255,255,255,0.35);margin-top:3px;letter-spacing:1px;text-transform:uppercase}
+.rating{font-size:30px;margin-bottom:4px}
+.rating-text{font-size:10px;color:#FF6B00;margin-bottom:12px;line-height:1.8;letter-spacing:1px}
+.pop-text{position:absolute;font-family:'Fredoka One',cursive;pointer-events:none;animation:popUp .9s ease-out forwards;z-index:50}
+@keyframes popUp{0%{opacity:1;transform:translateY(0) scale(0.8)}50%{opacity:1;transform:translateY(-35px) scale(1.2)}100%{opacity:0;transform:translateY(-80px) scale(1)}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="hud" id="hud">
+    <div class="hud-block"><div class="hud-label">Distance</div><div class="hud-value" id="distD">0<span style="font-size:13px">km</span></div></div>
+    <div><div class="hud-title">🚲 SAM'S AIRPORT RUN</div><div class="hud-sub">Eindhoven ➔ Amsterdam Schiphol</div></div>
+    <div class="hud-block"><div class="hud-label">Lives</div><div class="hud-value" id="livesD">❤️❤️❤️</div></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="startCard">
+    <div class="card-title">SAM'S AIRPORT RUN</div>
+    <div class="card-sub">Eindhoven ➔ Amsterdam Schiphol</div>
+    <div class="sam-av"><img id="samStart" src="" alt="Sam"/></div>
+    <div class="notice">🚨 BREAKING: Eindhoven Airport is closed. Permanently.<br>Sam must bike to Amsterdam Schiphol. 150km.<br>The Dutch countryside is not making it easy.</div>
+    <p>Dodge spinning windmills AND flying poffertjes — they will slow Sam down! Collect tulips for bonus km.</p>
+    <div class="legend">
+      <div class="legend-item">⬆️⬇️ Move up / down</div>
+      <div class="legend-item">➡️ Surge forward</div>
+      <div class="legend-item">💨 Dodge windmills</div>
+      <div class="legend-item">🥞 Dodge poffertjes</div>
+      <div class="legend-item">🧀 Dodge cheese wheels</div>
+      <div class="legend-item">🌷 Collect tulips</div>
+    </div>
+    <button class="play-btn" onclick="startGame()">VAMOS SAM! 🚲</button>
+  </div>
+  <div class="card" id="endCard" style="display:none">
+    <div class="sam-av"><img id="samEnd" src="" alt="Sam"/></div>
+    <div class="big-dist" id="finalDist">0<span style="font-size:26px">km</span></div>
+    <div class="dist-label">Distance covered</div>
+    <div class="rating" id="ratingEmoji">✈️</div>
+    <div class="rating-text" id="ratingText"></div>
+    <div class="result-stats">
+      <div class="rs"><div class="rs-num" id="endDist">0</div><div class="rs-label">KM</div></div>
+      <div class="rs"><div class="rs-num" id="endWindmills">0</div><div class="rs-label">Dodged</div></div>
+      <div class="rs"><div class="rs-num" id="endTulips">0</div><div class="rs-label">Tulips</div></div>
+    </div>
+    <button class="play-btn" onclick="startGame()">Try again 🚲</button>
+  </div>
+</div>
+
+<script>
+var SAM_SRC = 'data:image/jpeg;base64,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';
+['samStart','samEnd'].forEach(function(id){var el=document.getElementById(id);if(el)el.src=SAM_SRC;});
+var samImg = new Image(); samImg.src = SAM_SRC;
+
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+var TOTAL_DIST = 150;
+var gameRunning = false;
+
+// Sam position
+var samX, samY, samBaseX;
+var samTargetY, samSurgeX, surging = false, surgeTimer = 0;
+var SURGE_DIST = 120, SURGE_DURATION = 40, SURGE_RETURN = 80;
+var surgePhase = 0; // 0=idle, 1=forward, 2=returning
+
+// Keys
+var keys = {};
+document.addEventListener('keydown', function(e) {
+  keys[e.code] = true;
+  if(['ArrowUp','ArrowDown','ArrowRight','ArrowLeft'].indexOf(e.code) >= 0) e.preventDefault();
+});
+document.addEventListener('keyup', function(e) { keys[e.code] = false; });
+
+var windmills = [], tulips = [], poffertjes = [], cheeseWheels = [], particles = [], popTexts = [];
+var distance = 0, lives = 3, windmillsDodged = 0, tulipsCollected = 0;
+var speed = 1.8, spawnTimer = null, tulipTimer = null, pofTimer = null, cheeseTimer = null, animFrame = null;
+var hitCooldown = 0, slowTimer = 0;
+var bgOffset = 0, wheelAngle = 0, cloudOffset = 0;
+var poffertjesRaining = false, pofRainTimer = 0;
+
+// Clouds
+var clouds = [];
+for(var i=0;i<6;i++) clouds.push({
+  x:Math.random()*canvas.width, y:30+Math.random()*canvas.height*0.28,
+  w:90+Math.random()*130, opacity:0.55+Math.random()*0.3, speed:0.12+Math.random()*0.15
+});
+
+function getRoadBounds(){
+  var H = canvas.height;
+  return {top: H*0.37+18, bot: H*0.77-18};
+}
+
+function spawnCheeseWheel(){
+  if(!gameRunning) return;
+  var rb = getRoadBounds();
+  // Cheese wheel rolls across the FULL road at a random Y
+  var lane = Math.floor(Math.random()*4);
+  var laneH = (rb.bot-rb.top)/4;
+  var y = rb.top + lane*laneH + laneH/2 + (Math.random()-0.5)*laneH*0.3;
+  cheeseWheels.push({
+    x: canvas.width+50, y: y,
+    speed: speed*1.4+Math.random()*0.8,
+    rot: 0, size: 22+Math.random()*10,
+    hit: false, hitAnim: 0
+  });
+  popTexts.push({x:canvas.width*0.7, y:getRoadBounds().top-20, text:'CHEESE WHEEL! 🧀', color:'#f0c040', life:1.5, size:18});
+}
+
+function spawnWindmill(){
+  if(!gameRunning) return;
+  var H = canvas.height;
+  var rb = getRoadBounds();
+  var laneCount = 4;
+  var laneH = (rb.bot-rb.top)/laneCount;
+  var lane = Math.floor(Math.random()*laneCount);
+  var y = rb.top + lane*laneH + laneH/2 + (Math.random()-0.5)*laneH*0.35;
+  windmills.push({
+    x:canvas.width+90, y:y,
+    rotation:Math.random()*Math.PI*2,
+    rotSpeed:(0.025+Math.random()*0.03)*(Math.random()>0.5?1:-1),
+    speed:speed*1.05, size:42+Math.random()*20,
+    hit:false, hitAnim:0
+  });
+}
+
+function spawnTulip(){
+  if(!gameRunning) return;
+  var rb = getRoadBounds();
+  tulips.push({x:canvas.width+30, y:rb.top+Math.random()*(rb.bot-rb.top), speed:speed*0.8, collected:false});
+}
+
+function triggerPoffertjesRain(){
+  if(!gameRunning) return;
+  poffertjesRaining = true;
+  pofRainTimer = 180; // frames of rain
+  popTexts.push({x:canvas.width/2, y:canvas.height*0.45, text:'POFFERTJES REGEN! 🥞', color:'#f39c12', life:2, size:24});
+  // Spawn a wave
+  var rb = getRoadBounds();
+  for(var i=0;i<12;i++){
+    poffertjes.push({
+      x:canvas.width*0.3+Math.random()*canvas.width*0.7,
+      y:-20-Math.random()*100,
+      vy:2.5+Math.random()*2,
+      vx:-(speed*0.5+Math.random()*0.5),
+      rot:Math.random()*Math.PI*2,
+      rotSpd:(Math.random()-0.5)*0.15,
+      size:14+Math.random()*10,
+      hit:false
+    });
+  }
+}
+
+function drawBackground(){
+  var W=canvas.width, H=canvas.height, t=Date.now()*0.001;
+
+  // Sky gradient — moody Dutch sky
+  var sky = ctx.createLinearGradient(0,0,0,H*0.38);
+  sky.addColorStop(0,'#7ba8cc'); sky.addColorStop(1,'#c5ddef');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H*0.38);
+
+  // Clouds — fluffy, parallax
+  cloudOffset += speed*0.18;
+  clouds.forEach(function(c){
+    var cx = (c.x - cloudOffset*c.speed + W*3)%(W+c.w) - c.w/2;
+    ctx.fillStyle = 'rgba(255,255,255,'+c.opacity+')';
+    ctx.beginPath(); ctx.ellipse(cx,c.y,c.w/2,c.w/6.5,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx-c.w*0.2,c.y-c.w*0.07,c.w*0.3,c.w*0.17,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx+c.w*0.17,c.y-c.w*0.05,c.w*0.24,c.w*0.14,0,0,Math.PI*2); ctx.fill();
+    // Cloud shadow
+    ctx.fillStyle='rgba(180,200,220,0.15)';
+    ctx.beginPath(); ctx.ellipse(cx+5,c.y+8,c.w/2.2,c.w/8,0,0,Math.PI*2); ctx.fill();
+  });
+
+  // Sun / light glow
+  ctx.fillStyle='rgba(255,240,180,0.15)';
+  ctx.beginPath(); ctx.arc(W*0.85,H*0.08,55,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,240,100,0.25)';
+  ctx.beginPath(); ctx.arc(W*0.85,H*0.08,28,0,Math.PI*2); ctx.fill();
+
+  // Far horizon fields
+  ctx.fillStyle='#7aaa4a'; ctx.fillRect(0,H*0.34,W,H*0.06);
+  ctx.fillStyle='#8aba5a'; ctx.fillRect(0,H*0.36,W,H*0.03);
+
+  // Tulip strips near horizon
+  var tulipCols=['#FF3366','#FF9900','#FFD700','#FF66CC','#AA44FF'];
+  tulipCols.forEach(function(c,i){
+    var stripY=H*0.31+i*4.5;
+    ctx.fillStyle=c;
+    for(var x=0;x<W;x+=10){
+      var h=3+Math.sin(x*0.15+bgOffset*0.04+i)*1.5;
+      ctx.fillRect(x,stripY,8,h);
+    }
+  });
+
+  // Road
+  var rb = getRoadBounds();
+  var roadTop=H*0.35, roadBot=H*0.78;
+  // Road base
+  var roadGrad = ctx.createLinearGradient(0,roadTop,0,roadBot);
+  roadGrad.addColorStop(0,'#5a5a5a'); roadGrad.addColorStop(1,'#6a6a6a');
+  ctx.fillStyle=roadGrad; ctx.fillRect(0,roadTop,W,roadBot-roadTop);
+  // Road texture — subtle
+  ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=1;
+  for(var y=roadTop;y<roadBot;y+=25){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+  // Lane dividers — dashed white
+  var laneCount=4, laneH=(roadBot-roadTop)/laneCount;
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=2; ctx.setLineDash([45,32]);
+  var dashOff = -(bgOffset%77);
+  for(var l=1;l<laneCount;l++){
+    var ly=roadTop+l*laneH;
+    ctx.beginPath();ctx.moveTo(dashOff,ly);ctx.lineTo(W+77,ly);ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // Road edges — yellow
+  ctx.strokeStyle='#FFD700'; ctx.lineWidth=3.5;
+  ctx.beginPath();ctx.moveTo(0,roadTop);ctx.lineTo(W,roadTop);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,roadBot);ctx.lineTo(W,roadBot);ctx.stroke();
+  // Kerb pattern
+  var kerbW=14;
+  for(var x=0;x<W;x+=kerbW*2){
+    ctx.fillStyle='#FF6B00';ctx.fillRect(x,roadTop-5,kerbW,5);
+    ctx.fillStyle='#fff';ctx.fillRect(x+kerbW,roadTop-5,kerbW,5);
+    ctx.fillStyle='#FF6B00';ctx.fillRect(x,roadBot,kerbW,5);
+    ctx.fillStyle='#fff';ctx.fillRect(x+kerbW,roadBot,kerbW,5);
+  }
+  // Grass sides
+  var grassGrad=ctx.createLinearGradient(0,roadTop,0,0);
+  grassGrad.addColorStop(0,'#5a9a35');grassGrad.addColorStop(1,'#6aaa45');
+  ctx.fillStyle=grassGrad;ctx.fillRect(0,roadBot,W,H-roadBot);
+  ctx.fillStyle='#5a9a35';ctx.fillRect(0,roadBot,W,H-roadBot);
+  // Grass texture
+  for(var x=0;x<W;x+=18){
+    ctx.fillStyle=x%36===0?'#4a8a25':'#5a9a35';
+    ctx.fillRect(x,roadBot,9,H-roadBot);
+  }
+
+  // Distant background windmills — parallax
+  for(var i=0;i<6;i++){
+    var wx=((i*W/5.5)-bgOffset*0.06+W*3)%(W+200)-100;
+    drawDistantWindmill(wx,H*0.33,0.55);
+  }
+
+  // Canal alongside the top of the road — blue water strip
+  var canalTop = roadTop - 22;
+  var canalH = 18;
+  // Canal water gradient
+  var canalGrad = ctx.createLinearGradient(0,canalTop,0,canalTop+canalH);
+  canalGrad.addColorStop(0,'#4a90c8');
+  canalGrad.addColorStop(0.4,'#3a78b0');
+  canalGrad.addColorStop(1,'#2a5a8a');
+  ctx.fillStyle = canalGrad;
+  ctx.fillRect(0,canalTop,W,canalH);
+  // Water shimmer
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.5;
+  for(var wx=(-bgOffset*0.6%40);wx<W;wx+=40){
+    ctx.beginPath();
+    ctx.moveTo(wx,canalTop+4);
+    ctx.quadraticCurveTo(wx+10,canalTop+2,wx+20,canalTop+5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(wx+5,canalTop+10);
+    ctx.quadraticCurveTo(wx+15,canalTop+8,wx+25,canalTop+11);
+    ctx.stroke();
+  }
+  // Canal banks
+  ctx.fillStyle = '#5aaa3a';
+  ctx.fillRect(0,canalTop-6,W,8);
+  ctx.fillRect(0,canalTop+canalH,W,6);
+  // Canal border lines
+  ctx.strokeStyle = '#3a8a2a'; ctx.lineWidth = 2;
+  ctx.beginPath();ctx.moveTo(0,canalTop-2);ctx.lineTo(W,canalTop-2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,canalTop+canalH+2);ctx.lineTo(W,canalTop+canalH+2);ctx.stroke();
+  // Occasional boat! 🚤
+  var boatX = (W*1.5 - bgOffset*0.4 + W*3)%(W+200)-100;
+  ctx.save(); ctx.translate(boatX, canalTop+canalH/2);
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath(); ctx.moveTo(-14,4); ctx.lineTo(14,4); ctx.lineTo(10,-3); ctx.lineTo(-10,-3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.moveTo(-2,-3); ctx.lineTo(-2,-10); ctx.lineTo(6,-6); ctx.closePath(); ctx.fill(); // sail
+  ctx.restore();
+
+  // Road side details — trees and bushes
+  for(var i=0;i<8;i++){
+    var tx=((i*W/7)-bgOffset*0.5+W*3)%(W+60)-30;
+    // Top side bush
+    ctx.fillStyle='#5a9a2a';
+    ctx.beginPath();ctx.arc(tx,roadTop-12,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#4a8a1a';
+    ctx.beginPath();ctx.arc(tx+8,roadTop-18,7,0,Math.PI*2);ctx.fill();
+    // Bottom side bush
+    ctx.fillStyle='#4a8a2a';
+    ctx.beginPath();ctx.arc(tx,roadBot+14,11,0,Math.PI*2);ctx.fill();
+  }
+
+  bgOffset += speed;
+
+  // Progress bar
+  var prog=Math.min(1,distance/TOTAL_DIST);
+  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(W*0.06,H-20,W*0.88,8);
+  // Gradient progress
+  var pgGrad=ctx.createLinearGradient(W*0.06,0,W*0.94,0);
+  pgGrad.addColorStop(0,'#FF6B00');pgGrad.addColorStop(1,'#FFD700');
+  ctx.fillStyle=pgGrad; ctx.fillRect(W*0.06,H-20,W*0.88*prog,8);
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;ctx.strokeRect(W*0.06,H-20,W*0.88,8);
+  ctx.font='bold 9px Nunito,sans-serif';ctx.textAlign='left';
+  ctx.fillStyle='rgba(255,255,255,0.55)';ctx.fillText('EIN',W*0.06,H-24);
+  ctx.textAlign='right';ctx.fillText('AMS ✈️',W*0.94,H-24);
+  ctx.textAlign='center';ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.fillText(Math.floor(distance)+'km / '+TOTAL_DIST+'km',W/2,H-24);
+  ctx.font='16px serif';ctx.fillText('🚲',W*0.06+W*0.88*prog,H-18);
+
+  // Slow down indicator
+  if(slowTimer>0){
+    ctx.fillStyle='rgba(255,100,0,'+(slowTimer/120*0.25)+')';
+    ctx.fillRect(0,0,W,H);
+  }
+}
+
+function drawDistantWindmill(x,y,scale){
+  ctx.save();ctx.translate(x,y);ctx.globalAlpha=0.18;
+  ctx.fillStyle='#6a8a6a';
+  ctx.beginPath();ctx.moveTo(-4,0);ctx.lineTo(4,0);ctx.lineTo(3,-60*scale);ctx.lineTo(-3,-60*scale);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#7a9a7a';
+  var t=Date.now()*0.001;
+  for(var i=0;i<4;i++){
+    ctx.save();ctx.translate(0,-60*scale);ctx.rotate(t*0.4+i*Math.PI/2);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-4,-30*scale);ctx.lineTo(4,-30*scale);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawCheeseWheel(c){
+  if(c.hit) return;
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(c.rot);
+  var r = c.size;
+  // Outer rind — darker yellow-orange
+  ctx.fillStyle = '#d4920a';
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+  // Main cheese body
+  var cg = ctx.createRadialGradient(-r*0.2,-r*0.2,r*0.1,0,0,r);
+  cg.addColorStop(0,'#ffe066');
+  cg.addColorStop(0.7,'#f5c020');
+  cg.addColorStop(1,'#d4920a');
+  ctx.fillStyle = cg;
+  ctx.beginPath(); ctx.arc(0,0,r*0.88,0,Math.PI*2); ctx.fill();
+  // Holes (Gouda style!)
+  ctx.fillStyle = 'rgba(180,110,0,0.35)';
+  [[-r*0.3,-r*0.2,r*0.12],
+   [r*0.2,-r*0.35,r*0.09],
+   [r*0.3,r*0.15,r*0.1],
+   [-r*0.1,r*0.3,r*0.08],
+   [-r*0.45,r*0.1,r*0.07]].forEach(function(h){
+    ctx.beginPath();ctx.ellipse(h[0],h[1],h[2],h[2]*0.7,0,0,Math.PI*2);ctx.fill();
+  });
+  // Rind edge detail
+  ctx.strokeStyle = '#b87800';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+  // Highlight
+  ctx.fillStyle = 'rgba(255,255,200,0.3)';
+  ctx.beginPath(); ctx.ellipse(-r*0.25,-r*0.3,r*0.35,r*0.22,0.5,0,Math.PI*2); ctx.fill();
+  // Shadow
+  ctx.restore();
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.beginPath(); ctx.ellipse(c.x+4, c.y+r*0.85, r*0.9, r*0.22, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function drawWindmill(w){
+  var s=w.size*1.6; // bigger!
+  ctx.save();ctx.translate(w.x,w.y);
+  if(w.hit)ctx.globalAlpha=1-w.hitAnim;
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.12)';
+  ctx.beginPath();ctx.ellipse(10,s*0.22,18,6,0,0,Math.PI*2);ctx.fill();
+
+  // Base house (like the Zaanse Schans style!)
+  ctx.fillStyle='#3a5a3a'; // dark green base
+  ctx.strokeStyle='#2a4a2a';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(-18,s*0.05,36,s*0.2,3);ctx.fill();ctx.stroke();
+  // Green roof of base
+  ctx.fillStyle='#2a4a2a';
+  ctx.beginPath();ctx.moveTo(-22,s*0.05);ctx.lineTo(22,s*0.05);ctx.lineTo(14,s*-0.05);ctx.lineTo(-14,s*-0.05);ctx.closePath();ctx.fill();
+  // Green door
+  ctx.fillStyle='#4aaa4a';
+  ctx.beginPath();ctx.roundRect(-5,s*0.1,10,s*0.15,2);ctx.fill();
+  ctx.strokeStyle='#2a6a2a';ctx.lineWidth=1;ctx.stroke();
+
+  // Main tower — dark grey wooden planks (Zaanse style)
+  var tg=ctx.createLinearGradient(-11,0,11,0);
+  tg.addColorStop(0,'#3a3a3a');tg.addColorStop(0.4,'#555');tg.addColorStop(1,'#333');
+  ctx.fillStyle=tg;ctx.strokeStyle='#222';ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(-11,s*0.06);ctx.lineTo(11,s*0.06);
+  ctx.lineTo(7,-s*1.05);ctx.lineTo(-7,-s*1.05);ctx.closePath();
+  ctx.fill();ctx.stroke();
+  // Plank lines
+  ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=1;
+  for(var i=0;i<7;i++){
+    var py=s*0.04-i*s*0.155;
+    var pw=10-i*0.4;
+    ctx.beginPath();ctx.moveTo(-pw,py);ctx.lineTo(pw,py);ctx.stroke();
+  }
+  // Green trim on tower
+  ctx.strokeStyle='#4aaa4a';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(-11,s*0.06);ctx.lineTo(11,s*0.06);ctx.stroke();
+
+  // Balcony ring (typical Dutch windmill!)
+  ctx.fillStyle='#4aaa4a';
+  ctx.beginPath();ctx.ellipse(0,-s*0.62,13,4,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#2a7a2a';ctx.lineWidth=1;ctx.stroke();
+  // Balcony railing
+  ctx.strokeStyle='#4aaa4a';ctx.lineWidth=1.5;
+  for(var i=-2;i<=2;i++){
+    ctx.beginPath();ctx.moveTo(i*4,-s*0.58);ctx.lineTo(i*4,-s*0.66);ctx.stroke();
+  }
+
+  // Dutch flag on top! 🇳🇱
+  ctx.strokeStyle='#555';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(7,-s*1.05);ctx.lineTo(7,-s*1.22);ctx.stroke();
+  // Flag
+  ctx.fillStyle='#AE1C28'; ctx.fillRect(7,-s*1.22,14,s*0.055);
+  ctx.fillStyle='#fff';    ctx.fillRect(7,-s*1.165,14,s*0.055);
+  ctx.fillStyle='#21468B'; ctx.fillRect(7,-s*1.11,14,s*0.055);
+
+  // Windows
+  ctx.fillStyle='rgba(200,230,255,0.7)';
+  ctx.beginPath();ctx.ellipse(0,-s*0.35,5,6,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#4aaa4a';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.strokeStyle='rgba(100,160,200,0.6)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,-s*0.41);ctx.lineTo(0,-s*0.29);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-4,-s*0.35);ctx.lineTo(4,-s*0.35);ctx.stroke();
+
+  // Hub — big solid
+  ctx.fillStyle='#888';ctx.strokeStyle='#555';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,-s*1.05,8,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#aaa';ctx.beginPath();ctx.arc(0,-s*1.05,4,0,Math.PI*2);ctx.fill();
+
+  // Sails — bigger, with cross frame (classic Dutch)
+  ctx.save();ctx.translate(0,-s*1.05);ctx.rotate(w.rotation);
+  for(var i=0;i<4;i++){
+    ctx.save();ctx.rotate(i*Math.PI/2);
+    // Sail frame
+    ctx.strokeStyle='#555';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-s*1.1);ctx.stroke();
+    // Cross spars
+    ctx.lineWidth=1.8;
+    ctx.beginPath();ctx.moveTo(-s*0.18,-s*0.2);ctx.lineTo(s*0.18,-s*0.2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-s*0.22,-s*0.5);ctx.lineTo(s*0.22,-s*0.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-s*0.18,-s*0.8);ctx.lineTo(s*0.18,-s*0.8);ctx.stroke();
+    // Sail canvas — ivory/cream
+    var sg=ctx.createLinearGradient(-s*0.2,0,s*0.2,0);
+    sg.addColorStop(0,'rgba(240,235,220,0.9)');sg.addColorStop(0.5,'rgba(255,252,240,0.95)');sg.addColorStop(1,'rgba(230,225,210,0.9)');
+    ctx.fillStyle=sg;
+    ctx.beginPath();ctx.moveTo(-s*0.18,-s*0.08);ctx.lineTo(-s*0.22,-s*0.95);ctx.lineTo(s*0.22,-s*0.95);ctx.lineTo(s*0.18,-s*0.08);ctx.closePath();ctx.fill();
+    // Sail grid lines
+    ctx.strokeStyle='rgba(100,90,70,0.25)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(-s*0.18,-s*0.08);ctx.lineTo(-s*0.22,-s*0.95);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(s*0.18,-s*0.08);ctx.lineTo(s*0.22,-s*0.95);ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.restore();
+  w.rotation+=w.rotSpeed*(1+speed*0.04);
+}
+
+function drawPoffertje(p){
+  if(p.hit)return;
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+  var r=p.size;
+
+  // Bottom layer — darker golden brown
+  ctx.fillStyle='#b5720a';
+  ctx.beginPath();ctx.ellipse(0,r*0.15,r,r*0.45,0,0,Math.PI*2);ctx.fill();
+
+  // Main puffy body — the key is it's very ROUND and DOMED, not flat
+  var bodyGrad=ctx.createRadialGradient(-r*0.2,-r*0.2,r*0.1,0,0,r);
+  bodyGrad.addColorStop(0,'#f5c060'); // light golden top
+  bodyGrad.addColorStop(0.5,'#e8960e'); // warm golden
+  bodyGrad.addColorStop(1,'#c57a0a'); // darker edge
+  ctx.fillStyle=bodyGrad;
+  ctx.beginPath();ctx.ellipse(0,-r*0.05,r*0.95,r*0.85,0,0,Math.PI*2);ctx.fill();
+
+  // Top dome highlight (the puffiness!)
+  ctx.fillStyle='rgba(255,220,120,0.5)';
+  ctx.beginPath();ctx.ellipse(-r*0.15,-r*0.25,r*0.55,r*0.4,0,0,Math.PI*2);ctx.fill();
+
+  // Edge crisp ring (where it's cooked in the pan)
+  ctx.strokeStyle='#a56008';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.ellipse(0,-r*0.05,r*0.95,r*0.85,0,0,Math.PI*2);ctx.stroke();
+
+  // Powdered sugar dusting — white dots scattered on top
+  ctx.fillStyle='rgba(255,255,255,0.88)';
+  var sugarDots=[
+    [-r*0.3,-r*0.3,2.2],[-r*0.05,-r*0.4,2.8],[r*0.25,-r*0.25,2],
+    [-r*0.4,-r*0.05,1.8],[r*0.1,-r*0.15,2.5],[r*0.35,-r*0.1,1.5],
+    [-r*0.2,-r*0.1,1.5],[r*0.2,-r*0.38,1.8],[-r*0.1,-r*0.5,1.2]
+  ];
+  sugarDots.forEach(function(d){
+    ctx.beginPath();ctx.arc(d[0],d[1],d[2],0,Math.PI*2);ctx.fill();
+  });
+  // A few sugar clumps
+  ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.beginPath();ctx.ellipse(-r*0.15,-r*0.35,r*0.2,r*0.08,0.3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(r*0.2,-r*0.2,r*0.15,r*0.06,-0.2,0,Math.PI*2);ctx.fill();
+
+  ctx.restore();
+  p.rot+=p.rotSpd;
+}
+
+function drawTulip(t){
+  if(t.collected)return;
+  ctx.save();ctx.translate(t.x,t.y);
+  // Stem
+  ctx.strokeStyle='#2d8a2d';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(0,-5);ctx.stroke();
+  // Leaf
+  ctx.fillStyle='#3aaa3a';
+  ctx.beginPath();ctx.moveTo(0,2);ctx.quadraticCurveTo(-8,-4,0,-8);ctx.quadraticCurveTo(0,-2,0,2);ctx.fill();
+  // Flower
+  ctx.font='18px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🌷',0,-12);
+  ctx.restore();
+}
+
+function drawSam(){
+  ctx.save();ctx.translate(samX,samY);
+  if(hitCooldown>0&&Math.floor(hitCooldown/8)%2===0){ctx.globalAlpha=0.3;}
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.12)';
+  ctx.beginPath();ctx.ellipse(2,30,22,6,0,0,Math.PI*2);ctx.fill();
+  // Bike frame
+  ctx.strokeStyle='#003580';ctx.lineWidth=3.5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-20,12);ctx.lineTo(0,-6);ctx.lineTo(20,12);ctx.stroke(); // main frame
+  ctx.beginPath();ctx.moveTo(-20,12);ctx.lineTo(1,3);ctx.lineTo(0,-6);ctx.stroke(); // chain stay
+  // Fork
+  ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(20,12);ctx.stroke();
+  // Handlebar
+  ctx.strokeStyle='#002570';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(14,-14);ctx.lineTo(22,-10);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(18,-12);ctx.lineTo(18,-18);ctx.stroke();
+  // Fender
+  ctx.strokeStyle='#FF6B00';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(-20,12,14,-Math.PI*0.9,-Math.PI*0.1);ctx.stroke();
+  ctx.beginPath();ctx.arc(20,12,14,-Math.PI*0.9,-Math.PI*0.1);ctx.stroke();
+  // Wheels
+  ctx.strokeStyle='#111';ctx.lineWidth=3.5;
+  ctx.beginPath();ctx.arc(-20,12,14,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(20,12,14,0,Math.PI*2);ctx.stroke();
+  // Tire highlights
+  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(-20,12,14,-Math.PI*0.8,-Math.PI*0.2);ctx.stroke();
+  ctx.beginPath();ctx.arc(20,12,14,-Math.PI*0.8,-Math.PI*0.2);ctx.stroke();
+  // Spokes
+  ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=1;
+  for(var i=0;i<8;i++){
+    var a=wheelAngle+i*Math.PI/4;
+    ctx.beginPath();ctx.moveTo(-20+Math.cos(a)*14,12+Math.sin(a)*14);ctx.lineTo(-20-Math.cos(a)*14,12-Math.sin(a)*14);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(20+Math.cos(a)*14,12+Math.sin(a)*14);ctx.lineTo(20-Math.cos(a)*14,12-Math.sin(a)*14);ctx.stroke();
+  }
+  // Hubs
+  ctx.fillStyle='#FF6B00';ctx.beginPath();ctx.arc(-20,12,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#FF6B00';ctx.beginPath();ctx.arc(20,12,4,0,Math.PI*2);ctx.fill();
+  // Chain (simplified)
+  ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(-12,12);ctx.lineTo(4,12);ctx.stroke();
+  // Pedal crank
+  ctx.strokeStyle='#444';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  ctx.moveTo(Math.cos(wheelAngle)*9,12+Math.sin(wheelAngle)*9);
+  ctx.lineTo(-Math.cos(wheelAngle)*9,12-Math.sin(wheelAngle)*9);
+  ctx.stroke();
+  // Pedals
+  ctx.fillStyle='#222';
+  ctx.beginPath();ctx.arc(Math.cos(wheelAngle)*9,12+Math.sin(wheelAngle)*9,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(-Math.cos(wheelAngle)*9,12-Math.sin(wheelAngle)*9,3,0,Math.PI*2);ctx.fill();
+  // Rider body — orange jacket (Spanish!)
+  var lean = surgePhase===1?-0.15:0;
+  ctx.save();ctx.rotate(lean);
+  ctx.fillStyle='#FF6B00';
+  ctx.beginPath();ctx.ellipse(2,-22,10,13,0.15,0,Math.PI*2);ctx.fill();
+  // Jersey detail
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.beginPath();ctx.ellipse(2,-22,3,10,0.15,0,Math.PI*2);ctx.fill();
+  // Legs — animated with pedal
+  ctx.strokeStyle='#003580';ctx.lineWidth=5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(2,-12);ctx.lineTo(Math.cos(wheelAngle)*9+1,12+Math.sin(wheelAngle)*9);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(2,-12);ctx.lineTo(-Math.cos(wheelAngle)*9+1,12-Math.sin(wheelAngle)*9);ctx.stroke();
+  // Shoes
+  ctx.fillStyle='#222';
+  ctx.beginPath();ctx.ellipse(Math.cos(wheelAngle)*9+1,12+Math.sin(wheelAngle)*9,5,3,-0.3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(-Math.cos(wheelAngle)*9+1,12-Math.sin(wheelAngle)*9,5,3,-0.3,0,Math.PI*2);ctx.fill();
+  // Arms
+  ctx.strokeStyle='#FF6B00';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(5,-30);ctx.lineTo(18,-14);ctx.stroke();
+  ctx.strokeStyle='#e55a00';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(-2,-30);ctx.lineTo(12,-18);ctx.stroke();
+  ctx.restore();
+  // Head — Sam photo
+  ctx.save();
+  ctx.beginPath();ctx.arc(0,-38,15,0,Math.PI*2);ctx.clip();
+  if(samImg.complete&&samImg.naturalWidth>0) ctx.drawImage(samImg,-15,-53,30,30);
+  else{ctx.fillStyle='#FF6B00';ctx.fillRect(-15,-53,30,30);}
+  ctx.restore();
+  ctx.strokeStyle='#003580';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,-38,15,0,Math.PI*2);ctx.stroke();
+  // Helmet — orange with vent lines
+  ctx.fillStyle='#FF6B00';
+  ctx.beginPath();ctx.arc(0,-38,16,-Math.PI,0);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1.5;
+  for(var v=-1;v<=1;v++){ctx.beginPath();ctx.moveTo(v*5,-54);ctx.lineTo(v*6,-38);ctx.stroke();}
+  // Sunglasses (Sam had them in photo!)
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.beginPath();ctx.ellipse(-5,-38,6,4,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(5,-38,6,4,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(-1,-38);ctx.lineTo(1,-38);ctx.stroke(); // bridge
+  // Bag / backpack
+  ctx.fillStyle='#003580';
+  ctx.beginPath();ctx.roundRect(-14,-32,10,14,3);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.beginPath();ctx.roundRect(-13,-30,8,5,2);ctx.fill();
+  // Speed lines when surging
+  if(surgePhase===1){
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=2;
+    for(var i=0;i<4;i++){ctx.beginPath();ctx.moveTo(-40,-5+i*10);ctx.lineTo(-28,-5+i*10);ctx.stroke();}
+  }
+  ctx.restore();
+}
+
+function drawParticles(){
+  particles=particles.filter(function(p){
+    p.life-=0.05;if(p.life<=0)return false;
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;
+    ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;return true;
+  });
+}
+
+function drawPopTexts(){
+  popTexts=popTexts.filter(function(p){
+    p.life-=0.022;if(p.life<=0)return false;
+    var y=p.y-(1-Math.min(p.life,1))*50;
+    ctx.globalAlpha=Math.min(1,p.life*2);
+    ctx.font='bold '+(p.size||20)+'px Fredoka One,cursive';ctx.textAlign='center';
+    ctx.strokeStyle='rgba(0,0,0,0.85)';ctx.lineWidth=3;
+    ctx.strokeText(p.text,p.x,y);ctx.fillStyle=p.color;ctx.fillText(p.text,p.x,y);
+    ctx.globalAlpha=1;return true;
+  });
+}
+
+function updateLives(){
+  var str='';
+  for(var i=0;i<3;i++) str+=i<lives?'❤️':'🖤';
+  document.getElementById('livesD').textContent=str;
+}
+
+function handleInput(){
+  var rb = getRoadBounds();
+  var moveSpeed = 3.5;
+  if(keys['ArrowUp'])   samTargetY=Math.max(rb.top+5,samTargetY-moveSpeed);
+  if(keys['ArrowDown']) samTargetY=Math.min(rb.bot-5,samTargetY+moveSpeed);
+  // Right arrow — surge forward
+  if(keys['ArrowRight']&&surgePhase===0) surgePhase=1;
+}
+
+function updateSurge(){
+  if(surgePhase===1){
+    // Move forward
+    samX=Math.min(samBaseX+SURGE_DIST,samX+8);
+    if(samX>=samBaseX+SURGE_DIST) surgePhase=2;
+  } else if(surgePhase===2){
+    // Return to base
+    samX=Math.max(samBaseX,samX-4);
+    if(samX<=samBaseX) surgePhase=0;
+  } else {
+    samX=samBaseX;
+  }
+}
+
+function checkCollisions(){
+  if(hitCooldown>0){hitCooldown--;return;}
+  // Windmills
+  windmills.forEach(function(w){
+    if(w.hit)return;
+    if(Math.hypot(samX-w.x,samY-w.y)<w.size*0.7+20){
+      w.hit=true;lives--;hitCooldown=110;
+      updateLives();
+      for(var i=0;i<12;i++){var a=Math.random()*Math.PI*2;particles.push({x:samX,y:samY,vx:Math.cos(a)*4,vy:Math.sin(a)*4,color:'#ff4444',r:5,life:1});}
+      var msgs=['WINDMILL!!','OEF!','NIET GOED!','WATCH OUT!','AYYY!'];
+      popTexts.push({x:samX,y:samY-50,text:msgs[Math.floor(Math.random()*msgs.length)],color:'#ff4444',life:1.2,size:22});
+      if(lives<=0){setTimeout(endGame,600);}
+    }
+  });
+  // Cheese wheel — hits like windmill but bounces away
+  cheeseWheels.forEach(function(c){
+    if(c.hit)return;
+    if(Math.hypot(samX-c.x,samY-c.y)<c.size+18){
+      c.hit=true; lives--; hitCooldown=100;
+      updateLives();
+      for(var i=0;i<10;i++){var a=Math.random()*Math.PI*2;particles.push({x:c.x,y:c.y,vx:Math.cos(a)*4,vy:Math.sin(a)*4,color:'#f5c020',r:5,life:1});}
+      var cmsgs=['KAAS!!','GOUDA NO!','NOT THE CHEESE!','EDAM IT!'];
+      popTexts.push({x:samX,y:samY-50,text:cmsgs[Math.floor(Math.random()*cmsgs.length)],color:'#f5c020',life:1.2,size:22});
+      if(lives<=0){setTimeout(endGame,600);}
+    }
+  });
+  // Poffertjes — slow Sam down
+  poffertjes.forEach(function(p){
+    if(p.hit)return;
+    if(Math.hypot(samX-p.x,samY-p.y)<p.size+18){
+      p.hit=true;slowTimer=120;
+      for(var i=0;i<8;i++){var a=Math.random()*Math.PI*2;particles.push({x:p.x,y:p.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,color:'#e8a020',r:4,life:0.8});}
+      var pmsg=['POFFERTJE! 🥞','TOO DOUGHY!','STICKY!','WHY!! 🥞'];
+      popTexts.push({x:samX,y:samY-40,text:pmsg[Math.floor(Math.random()*pmsg.length)],color:'#f39c12',life:1,size:18});
+    }
+  });
+  // Tulips
+  tulips.forEach(function(t){
+    if(t.collected)return;
+    if(Math.hypot(samX-t.x,samY-t.y)<28){
+      t.collected=true;tulipsCollected++;distance+=2;
+      popTexts.push({x:t.x,y:t.y-20,text:'+2km 🌷',color:'#FF66CC',life:1,size:15});
+    }
+  });
+}
+
+function gameLoop(){
+  if(!gameRunning)return;
+  handleInput();
+  updateSurge();
+  // Smooth Y movement
+  samY+=(samTargetY-samY)*0.1;
+  // Wheel speed
+  var effectiveSpeed=slowTimer>0?speed*0.4:speed;
+  wheelAngle+=effectiveSpeed*0.09;
+  if(slowTimer>0)slowTimer--;
+  // Move obstacles left
+  windmills=windmills.filter(function(w){
+    w.x-=w.speed*(slowTimer>0?0.4:1);
+    if(w.hit){w.hitAnim+=0.05;return w.hitAnim<1;}
+    if(w.x<-100){windmillsDodged++;return false;}
+    return true;
+  });
+  tulips=tulips.filter(function(t){t.x-=t.speed;return !t.collected&&t.x>-50;});
+  cheeseWheels=cheeseWheels.filter(function(c){
+    c.x-=c.speed; c.rot+=c.speed*0.06;
+    if(c.hit){c.hitAnim+=0.05;return c.hitAnim<1;}
+    return c.x>-80;
+  });
+  poffertjes=poffertjes.filter(function(p){
+    if(p.hit)return false;
+    p.x+=p.vx;p.y+=p.vy;
+    return p.y<canvas.height+30;
+  });
+  // Distance & speed
+  distance+=effectiveSpeed*0.007;
+  speed=1.8+distance*0.01;
+  document.getElementById('distD').innerHTML=Math.floor(distance)+'<span style="font-size:13px">km</span>';
+  checkCollisions();
+  if(distance>=TOTAL_DIST){endGame(true);return;}
+  drawBackground();
+  tulips.forEach(function(t){drawTulip(t);});
+  poffertjes.forEach(function(p){drawPoffertje(p);});
+  cheeseWheels.forEach(function(c){drawCheeseWheel(c);});
+  windmills.forEach(function(w){drawWindmill(w);});
+  drawSam();
+  drawParticles();
+  drawPopTexts();
+  animFrame=requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  distance=0;lives=3;windmillsDodged=0;tulipsCollected=0;
+  speed=1.8;hitCooldown=0;slowTimer=0;surgePhase=0;
+  windmills=[];tulips=[];poffertjes=[];cheeseWheels=[];cheeseWheels=[];cows=[];particles=[];popTexts=[];bgOffset=0;wheelAngle=0;
+  var H=canvas.height,W=canvas.width;
+  samBaseX=W*0.15;
+  samX=samBaseX;samY=H*0.56;samTargetY=H*0.56;
+  gameRunning=true;
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  
+  updateLives();
+  if(spawnTimer)clearInterval(spawnTimer);
+  if(tulipTimer)clearInterval(tulipTimer);
+  if(pofTimer)clearInterval(pofTimer);
+  if(animFrame)cancelAnimationFrame(animFrame);
+  spawnTimer=setInterval(spawnWindmill,2200);
+  cheeseTimer=setInterval(spawnCheeseWheel,12000);
+  tulipTimer=setInterval(spawnTulip,4500);
+  pofTimer=setInterval(triggerPoffertjesRain,18000); // poffertjes rain every 18s
+  animFrame=requestAnimationFrame(gameLoop);
+  popTexts.push({x:W/2,y:H/2,text:'VAMOS SAM! 🚲',color:'#FF6B00',life:2.5,size:30});
+}
+
+function endGame(won){
+  gameRunning=false;
+  clearInterval(spawnTimer);clearInterval(tulipTimer);clearInterval(pofTimer);clearInterval(cheeseTimer);cancelAnimationFrame(animFrame);
+  windmills=[];tulips=[];poffertjes=[];cheeseWheels=[];
+  document.getElementById('hud').style.display='none';
+  
+  document.getElementById('finalDist').innerHTML=Math.floor(distance)+'<span style="font-size:26px">km</span>';
+  document.getElementById('endDist').textContent=Math.floor(distance);
+  document.getElementById('endWindmills').textContent=windmillsDodged;
+  document.getElementById('endTulips').textContent=tulipsCollected;
+  var emoji,text;
+  if(won){emoji='✈️';text='MADE IT! Sam boards his flight!';}
+  else if(distance>=120){emoji='😤';text='So close! Eindhoven karma.';}
+  else if(distance>=80){emoji='🌷';text='Stuck behind a windmill.';}
+  else if(distance>=40){emoji='🥞';text='Should have taken the train.';}
+  else{emoji='😭';text='Sam misses his flight. Again.';}
+  document.getElementById('ratingEmoji').textContent=emoji;
+  document.getElementById('ratingText').textContent=text;
+  document.getElementById('startCard').style.display='none';
+  document.getElementById('endCard').style.display='block';
+  document.getElementById('overlay').style.display='flex';
+}
+
+window.addEventListener('resize',function(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+</script>
+</body>
+</html>
