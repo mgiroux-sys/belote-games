@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fede: Pizza vs Bratwurst!</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Fredoka+One&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;overflow:hidden;width:100vw;height:100vh;user-select:none;cursor:none}
+canvas{display:block;position:absolute;top:0;left:0}
+#ui{position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:none}
+.hud{background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);border-bottom:3px solid #e74c3c;padding:0 20px;height:54px;display:none;align-items:center;justify-content:space-between}
+.hud-block{text-align:center;min-width:90px}
+.hud-label{font-size:9px;color:rgba(255,255,255,0.6);letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+.hud-value{font-family:'Fredoka One',cursive;font-size:24px;color:#fff;line-height:1}
+.hud-title{font-family:'Fredoka One',cursive;font-size:15px;color:#fff;text-align:center;letter-spacing:1px}
+.hud-sub{font-size:9px;color:rgba(255,255,255,0.45);text-align:center;margin-top:1px}
+.lives-row{display:flex;gap:3px;justify-content:center;margin-top:2px;font-size:18px}
+#overlay{position:absolute;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:20}
+.card{background:rgba(255,255,255,0.97);border-radius:24px;padding:26px 34px;text-align:center;max-width:440px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,0.3)}
+.card-title{font-family:'Fredoka One',cursive;font-size:28px;color:#e74c3c;margin-bottom:2px}
+.card-sub{font-size:8px;color:#999;letter-spacing:3px;margin-bottom:12px;text-transform:uppercase}
+.fede-av{width:72px;height:72px;border-radius:50%;overflow:hidden;border:4px solid #e74c3c;margin:0 auto 10px;box-shadow:0 4px 16px rgba(231,76,60,0.4)}
+.fede-av img{width:100%;height:100%;object-fit:cover;object-position:center 20%}
+.card p{font-size:12px;color:#666;margin-bottom:12px;line-height:1.8;font-family:'Nunito',sans-serif}
+.info-pills{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;text-align:left}
+.pill{background:#f8f8f8;border-radius:10px;padding:8px 12px;font-size:12px;color:#555;font-weight:700;font-family:'Nunito',sans-serif;border-left:3px solid #e74c3c}
+.pill.green{border-left-color:#27ae60}
+.play-btn{background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;border-radius:50px;padding:12px 36px;font-family:'Fredoka One',cursive;font-size:20px;cursor:pointer;box-shadow:0 6px 20px rgba(231,76,60,0.4);transition:transform .1s;pointer-events:all}
+.play-btn:hover{transform:translateY(-2px)}
+.play-btn:active{transform:scale(.97)}
+.big-score{font-family:'Fredoka One',cursive;font-size:54px;color:#e74c3c;line-height:1;margin-bottom:4px}
+.score-label{font-size:9px;color:#aaa;letter-spacing:2px;margin-bottom:10px;text-transform:uppercase}
+.result-stats{display:flex;gap:8px;margin:10px 0}
+.rs{background:#f8f8f8;border-radius:10px;padding:8px;flex:1}
+.rs-num{font-family:'Fredoka One',cursive;font-size:20px;color:#222}
+.rs-label{font-size:7px;color:#aaa;margin-top:3px;letter-spacing:1px;text-transform:uppercase}
+.rating{font-size:30px;margin-bottom:4px}
+.rating-text{font-size:10px;color:#e74c3c;margin-bottom:12px;line-height:1.8;letter-spacing:1px;font-weight:800}
+.pop-text{position:absolute;font-family:'Fredoka One',cursive;pointer-events:none;animation:popUp .8s ease-out forwards;z-index:200}
+@keyframes popUp{0%{opacity:1;transform:translateY(0) scale(0.8)}50%{opacity:1;transform:translateY(-40px) scale(1.3)}100%{opacity:0;transform:translateY(-90px) scale(1)}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="hud" id="hud">
+    <div class="hud-block"><div class="hud-label">🍕 Caught</div><div class="hud-value" id="pizzaD">0</div></div>
+    <div><div class="hud-title">🍕 PIZZA vs BRATWURST 🌭</div><div class="hud-sub" id="timerD" style="font-size:13px;color:#FFD700;font-family:Fredoka One,cursive">1:00</div></div>
+    <div class="hud-block"><div class="hud-label">Lives</div><div class="lives-row" id="livesRow"></div></div>
+  </div>
+</div>
+<div id="overlay">
+  <div class="card" id="startCard">
+    <div class="fede-av"><img id="fedeStart" src="" alt="Federico"/></div>
+    <div class="card-title">PIZZA vs BRATWURST</div>
+    <div class="card-sub">Federico — Italian in Hamburg</div>
+    <p>Federico moved to Hamburg and is now surrounded by bratwursts raining from the sky. Help him catch as many pizzas as possible while dodging the bratwursts!</p>
+    <div class="info-pills">
+      <div class="pill green">🍕 Catch pizzas — delizioso! +points!</div>
+      <div class="pill">🌭 Dodge bratwursts — 3 hits and game over!</div>
+      <div class="pill green">🖱️ Move mouse left and right to control Fede</div>
+    </div>
+    <button class="play-btn" onclick="startGame()">ANDIAMO! 🍕</button>
+  </div>
+  <div class="card" id="endCard" style="display:none">
+    <div class="fede-av"><img id="fedeEnd" src="" alt="Federico"/></div>
+    <div class="big-score" id="finalScore">0</div>
+    <div class="score-label">PIZZAS CAUGHT</div>
+    <div class="rating" id="ratingEmoji">🍕</div>
+    <div class="rating-text" id="ratingText"></div>
+    <div class="result-stats">
+      <div class="rs"><div class="rs-num" id="endPizza">0</div><div class="rs-label">Pizzas</div></div>
+      <div class="rs"><div class="rs-num" id="endBrat">0</div><div class="rs-label">Bratwursts</div></div>
+      <div class="rs"><div class="rs-num" id="endStreak">0</div><div class="rs-label">Best Streak</div></div>
+    </div>
+    <button class="play-btn" onclick="startGame()">ANCORA! 🍕</button>
+  </div>
+</div>
+
+<script>
+var FEDE_SRC='data:image/jpeg;base64,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';
+['fedeStart','fedeEnd'].forEach(function(id){var el=document.getElementById(id);if(el)el.src=FEDE_SRC;});
+var fedeImg=new Image();fedeImg.src=FEDE_SRC;
+
+var canvas=document.getElementById('c');
+var ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+var fedeX,fedeY,mouseX;
+var items=[],particles=[],popTexts=[];
+var score=0,lives=3,pizzas=0,bratsHit=0,streak=0,bestStreak=0;
+var gameRunning=false,spawnTimer=null,animFrame=null,timerInterval=null;
+var doublePoints=false,doubleTimer=0,totalCards=0;
+var hitFlash=0,happyFlash=0;
+var walkCycle=0,itemId=0,bgOffset=0;
+
+canvas.addEventListener('mousemove',function(e){mouseX=e.clientX;});
+
+function rand(a,b){return Math.random()*(b-a)+a;}
+function randInt(a,b){return Math.floor(rand(a,b));}
+
+function spawnItem(){
+  if(!gameRunning)return;
+  var W=canvas.width;
+  // 8% chance of credit card, otherwise pizza/bratwurst
+  var roll=Math.random();
+  var isCreditCard=roll<0.06&&totalCards<3;
+  var isPizza=!isCreditCard&&(Math.random()<Math.max(0.38,0.62-pizzas*0.004));
+  var spd=rand(3.5,5.5)+(pizzas*0.018);
+  spd=Math.min(spd,9.0);
+  if(isCreditCard){spd*=0.7;totalCards++;} // credit cards fall slower
+  items.push({
+    id:itemId++,x:rand(55,W-55),y:-55,
+    vy:spd,rot:isCreditCard?0.05:(Math.random()-0.5)*0.1,
+    isPizza:isPizza,isCreditCard:isCreditCard,
+    size:isPizza?rand(30,42):isCreditCard?36:rand(34,44),
+    state:'falling',alpha:1
+  });
+}
+
+function updateLives(){
+  var row=document.getElementById('livesRow');
+  row.innerHTML='';
+  for(var i=0;i<3;i++){
+    var s=document.createElement('span');
+    s.textContent=i<lives?'❤️':'🖤';
+    row.appendChild(s);
+  }
+}
+
+// Hamburg Speicherstadt background
+function drawBackground(){
+  var W=canvas.width,H=canvas.height;
+
+  // Sky — dramatic Hamburg clouds
+  var sky=ctx.createLinearGradient(0,0,0,H*0.42);
+  sky.addColorStop(0,'#8aa0b8');
+  sky.addColorStop(0.6,'#aabccc');
+  sky.addColorStop(1,'#c0cdd8');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H*0.42);
+
+  // Dramatic Hamburg clouds
+  ctx.fillStyle='rgba(255,255,255,0.6)';
+  [[W*0.15,H*0.07,180],[W*0.5,H*0.04,140],[W*0.8,H*0.09,160]].forEach(function(c){
+    ctx.beginPath();ctx.ellipse(c[0],c[1],c[2]/2,c[2]/6,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(c[0]-c[2]*0.22,c[1]-c[2]*0.07,c[2]*0.32,c[2]*0.18,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(c[0]+c[2]*0.18,c[1]-c[2]*0.06,c[2]*0.26,c[2]*0.15,0,0,Math.PI*2);ctx.fill();
+  });
+  ctx.fillStyle='rgba(180,195,210,0.4)';
+  [[W*0.35,H*0.12,100],[W*0.65,H*0.08,120]].forEach(function(c){
+    ctx.beginPath();ctx.ellipse(c[0],c[1],c[2]/2,c[2]/6,0,0,Math.PI*2);ctx.fill();
+  });
+
+  // Italian sun peeking through (faint) 😄
+  ctx.fillStyle='rgba(255,215,50,0.12)';
+  ctx.beginPath();ctx.arc(W*0.88,H*0.05,70,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,215,50,0.2)';
+  ctx.beginPath();ctx.arc(W*0.88,H*0.05,35,0,Math.PI*2);ctx.fill();
+
+  // === SPEICHERSTADT BUILDINGS — red brick Hamburg style ===
+  var buildH=H*0.55;
+  var buildY=H*0.42-buildH+H*0.42;
+
+  // Left building cluster
+  function drawHamburgBuilding(x,w,h,floors,hasTower){
+    var by=H*0.42-h;
+    // Main red brick body
+    var bg=ctx.createLinearGradient(x,0,x+w,0);
+    bg.addColorStop(0,'#7a3a28');bg.addColorStop(0.3,'#9a4a32');
+    bg.addColorStop(0.7,'#8a4030');bg.addColorStop(1,'#6a2e20');
+    ctx.fillStyle=bg;ctx.fillRect(x,by,w,h);
+    // Brick texture lines
+    ctx.strokeStyle='rgba(0,0,0,0.1)';ctx.lineWidth=0.8;
+    for(var ry=by;ry<H*0.42;ry+=12){
+      ctx.beginPath();ctx.moveTo(x,ry);ctx.lineTo(x+w,ry);ctx.stroke();
+    }
+    // Dark roof / gable
+    ctx.fillStyle='#3a2a22';
+    ctx.beginPath();ctx.moveTo(x-4,by);ctx.lineTo(x+w/2,by-h*0.15);ctx.lineTo(x+w+4,by);ctx.closePath();ctx.fill();
+    // Green copper roof top
+    ctx.fillStyle='#4a7a5a';
+    ctx.beginPath();ctx.moveTo(x+2,by);ctx.lineTo(x+w/2,by-h*0.13);ctx.lineTo(x+w-2,by);ctx.closePath();ctx.fill();
+    // Arched windows — typical Speicherstadt
+    ctx.fillStyle='rgba(150,180,210,0.5)';
+    ctx.strokeStyle='#5a2a18';ctx.lineWidth=1.5;
+    var winW=w*0.18,winH=h*0.09;
+    var cols=Math.floor(w/(winW*1.8));
+    for(var f=0;f<floors;f++){
+      for(var c=0;c<cols;c++){
+        var wx=x+w/(cols+1)*(c+1)-winW/2;
+        var wy=by+h*0.08+f*(h/floors);
+        // Arched window
+        ctx.fillRect(wx,wy+winH*0.3,winW,winH*0.7);
+        ctx.beginPath();ctx.arc(wx+winW/2,wy+winH*0.3,winW/2,Math.PI,0);ctx.fill();
+        ctx.strokeRect(wx,wy+winH*0.3,winW,winH*0.7);
+        ctx.beginPath();ctx.arc(wx+winW/2,wy+winH*0.3,winW/2,Math.PI,0);ctx.stroke();
+      }
+    }
+    // Tower if requested
+    if(hasTower){
+      var tw=w*0.3,th=h*0.35,tx=x+w/2-tw/2;
+      ctx.fillStyle='#8a4030';
+      ctx.fillRect(tx,by-th,tw,th);
+      ctx.fillStyle='#3a2a22';
+      ctx.beginPath();ctx.moveTo(tx-4,by-th);ctx.lineTo(tx+tw/2,by-th-th*0.4);ctx.lineTo(tx+tw+4,by-th);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#4a7a5a';
+      ctx.beginPath();ctx.moveTo(tx+2,by-th);ctx.lineTo(tx+tw/2,by-th-th*0.35);ctx.lineTo(tx+tw-2,by-th);ctx.closePath();ctx.fill();
+      // Clock face on tower
+      ctx.fillStyle='rgba(200,220,200,0.8)';
+      ctx.beginPath();ctx.arc(tx+tw/2,by-th+th*0.3,tw*0.3,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#3a2a22';ctx.lineWidth=1;ctx.stroke();
+    }
+  }
+
+  drawHamburgBuilding(0,W*0.14,H*0.38,4,false);
+  drawHamburgBuilding(W*0.13,W*0.11,H*0.32,3,false);
+  drawHamburgBuilding(W*0.23,W*0.18,H*0.42,5,true);
+  drawHamburgBuilding(W*0.62,W*0.18,H*0.42,5,true);
+  drawHamburgBuilding(W*0.79,W*0.11,H*0.32,3,false);
+  drawHamburgBuilding(W*0.89,W*0.11,H*0.36,4,false);
+
+  // === CANAL — Speicherstadt has canals between buildings ===
+  var canalY=H*0.42;
+  var canalH=H*0.08;
+  // Dark murky Hamburg canal water
+  var cw=ctx.createLinearGradient(0,canalY,0,canalY+canalH);
+  cw.addColorStop(0,'#3a4a5a');cw.addColorStop(1,'#2a3a4a');
+  ctx.fillStyle=cw;ctx.fillRect(0,canalY,W,canalH);
+  // Canal reflections
+  ctx.strokeStyle='rgba(150,180,210,0.2)';ctx.lineWidth=2;
+  for(var rx=(-bgOffset*0.3%50);rx<W;rx+=50){
+    ctx.beginPath();ctx.moveTo(rx,canalY+5);
+    ctx.quadraticCurveTo(rx+12,canalY+10,rx+25,canalY+5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(rx+5,canalY+18);
+    ctx.quadraticCurveTo(rx+18,canalY+23,rx+32,canalY+18);ctx.stroke();
+  }
+  // Canal walls / quay
+  ctx.fillStyle='#6a3a28';ctx.fillRect(0,canalY-4,W,6);
+  ctx.fillStyle='#5a2a18';ctx.fillRect(0,canalY+canalH-3,W,5);
+  // Bridge
+  var bx=W/2-60,bw=120;
+  ctx.fillStyle='#555';ctx.fillRect(bx,canalY-6,bw,canalH+8);
+  ctx.strokeStyle='#444';ctx.lineWidth=8;
+  ctx.beginPath();ctx.moveTo(bx,canalY);ctx.lineTo(bx+bw,canalY);ctx.stroke();
+  ctx.strokeStyle='#666';ctx.lineWidth=3;
+  for(var bp=bx+10;bp<bx+bw;bp+=12){
+    ctx.beginPath();ctx.moveTo(bp,canalY-6);ctx.lineTo(bp,canalY+canalH+6);ctx.stroke();
+  }
+
+  // === COBBLESTONE GROUND ===
+  var groundY=canalY+canalH;
+  var ground=ctx.createLinearGradient(0,groundY,0,H);
+  ground.addColorStop(0,'#6a5a4a');ground.addColorStop(1,'#5a4a3a');
+  ctx.fillStyle=ground;ctx.fillRect(0,groundY,W,H-groundY);
+  // Cobblestone pattern
+  ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=1;
+  var cs=36;
+  for(var gx=(-bgOffset*0.15%cs);gx<W;gx+=cs){
+    for(var gy=Math.floor(groundY);gy<H;gy+=cs*0.55){
+      var off=(Math.floor(gy/cs)%2)*cs/2;
+      ctx.strokeRect(gx+off,gy,cs,cs*0.55);
+    }
+  }
+
+  // Italian flag bunting — Fede brought a piece of home!
+  ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=1.5;
+  ctx.beginPath();
+  var pts=8;
+  for(var i=0;i<=pts;i++){
+    var bpx=W/pts*i;
+    var bpy=H*0.02+Math.sin(i*Math.PI/pts*2)*H*0.02;
+    if(i===0)ctx.moveTo(bpx,bpy);else ctx.lineTo(bpx,bpy);
+  }
+  ctx.stroke();
+  var fc=['#009246','#fff','#ce2b37'];
+  for(var i=0;i<pts;i++){
+    var bpx=W/pts*i+W/(pts*2);
+    var bpy=H*0.025+Math.sin((i+0.5)*Math.PI/pts*2)*H*0.02;
+    ctx.fillStyle=fc[i%3];
+    ctx.beginPath();ctx.moveTo(bpx,bpy);ctx.lineTo(bpx-8,bpy+20);ctx.lineTo(bpx+8,bpy+20);ctx.closePath();ctx.fill();
+  }
+
+  bgOffset+=0.8;
+
+  // Hit/happy flash
+  if(hitFlash>0){hitFlash-=0.05;ctx.fillStyle='rgba(231,76,60,'+(hitFlash*0.3)+')';ctx.fillRect(0,0,W,H);}
+  if(happyFlash>0){happyFlash-=0.06;ctx.fillStyle='rgba(46,204,113,'+(happyFlash*0.12)+')';ctx.fillRect(0,0,W,H);}
+}
+
+function drawPizza(item){
+  ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rot);ctx.globalAlpha=item.alpha;
+  var r=item.size;
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.beginPath();ctx.ellipse(4,r+5,r*0.8,r*0.22,0,0,Math.PI*2);ctx.fill();
+  // Crust
+  ctx.fillStyle='#d4862a';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+  // Tomato
+  ctx.fillStyle='#c0392b';ctx.beginPath();ctx.arc(0,0,r*0.82,0,Math.PI*2);ctx.fill();
+  // Cheese
+  ctx.fillStyle='#f5c842';ctx.beginPath();ctx.arc(0,0,r*0.7,0,Math.PI*2);ctx.fill();
+  // Toppings
+  [[-r*0.3,-r*0.25],[r*0.25,-r*0.3],[0,r*0.3],[r*0.3,r*0.1],[-r*0.25,r*0.25]].forEach(function(p,i){
+    if(i%2===0){ctx.fillStyle='#c0392b';ctx.beginPath();ctx.arc(p[0],p[1],r*0.12,0,Math.PI*2);ctx.fill();}
+    else{ctx.fillStyle='#27ae60';ctx.beginPath();ctx.ellipse(p[0],p[1],r*0.1,r*0.07,0.5,0,Math.PI*2);ctx.fill();}
+  });
+  ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,0,r,Math.PI*1.1,Math.PI*1.9);ctx.stroke();
+  ctx.restore();
+  item.rot+=item.rotSpd;
+}
+
+function drawBratwurst(item){
+  ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rot);ctx.globalAlpha=item.alpha;
+  var r=item.size;
+  var len=r*1.8; // elongated sausage shape
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.beginPath();ctx.ellipse(4,r*0.5+5,len*0.5,r*0.2,0,0,Math.PI*2);ctx.fill();
+
+  // Outer sausage casing — plump cylinder shape
+  ctx.save();
+  // Main body gradient — golden brown grilled color
+  var sg=ctx.createLinearGradient(-len*0.5,-r*0.7,len*0.5,r*0.7);
+  sg.addColorStop(0,'#7a3010');
+  sg.addColorStop(0.25,'#c8681a');
+  sg.addColorStop(0.5,'#e88828');
+  sg.addColorStop(0.75,'#c8681a');
+  sg.addColorStop(1,'#7a3010');
+  ctx.fillStyle=sg;
+  ctx.beginPath();
+  ctx.ellipse(0,0,len*0.5,r*0.42,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Top highlight — gives it the round plump look
+  var hl=ctx.createLinearGradient(0,-r*0.5,0,r*0.1);
+  hl.addColorStop(0,'rgba(255,200,100,0.45)');
+  hl.addColorStop(1,'rgba(255,150,50,0)');
+  ctx.fillStyle=hl;
+  ctx.beginPath();
+  ctx.ellipse(0,-r*0.12,len*0.42,r*0.28,0,0,Math.PI*2);
+  ctx.fill();
+
+  // Grill marks — the characteristic dark stripes
+  ctx.strokeStyle='rgba(40,15,5,0.55)';ctx.lineWidth=3;ctx.lineCap='round';
+  [-len*0.28,-len*0.1,len*0.1,len*0.28].forEach(function(gx){
+    ctx.beginPath();ctx.moveTo(gx,-r*0.32);ctx.lineTo(gx,r*0.32);ctx.stroke();
+  });
+
+  // Skin crinkle — slight texture lines along length
+  ctx.strokeStyle='rgba(100,40,10,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.ellipse(0,0,len*0.5,r*0.42,0,0,Math.PI*2);ctx.stroke();
+
+  // Rounded ends — twisted sausage tips
+  [-len*0.5,len*0.5].forEach(function(ex){
+    var endGrad=ctx.createRadialGradient(ex,0,0,ex,0,r*0.35);
+    endGrad.addColorStop(0,'#c8681a');
+    endGrad.addColorStop(1,'#6a2808');
+    ctx.fillStyle=endGrad;
+    ctx.beginPath();ctx.ellipse(ex,0,r*0.28,r*0.38,0,0,Math.PI*2);ctx.fill();
+  });
+
+  ctx.restore();
+
+  // German flag tiny pin
+  ctx.strokeStyle='#777';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(0,-r*0.45);ctx.lineTo(0,-r*0.85);ctx.stroke();
+  ctx.fillStyle='#000';ctx.fillRect(0,-r*0.85,12,4);
+  ctx.fillStyle='#DD0000';ctx.fillRect(0,-r*0.78,12,4);
+  ctx.fillStyle='#FFCE00';ctx.fillRect(0,-r*0.71,12,4);
+
+  ctx.restore();
+  item.rot+=item.rotSpd;
+}
+
+function drawCreditCard(item){
+  ctx.save();ctx.translate(item.x,item.y);ctx.rotate(item.rot);ctx.globalAlpha=item.alpha;
+  var w=item.size*1.6,h=item.size;
+  // Glow effect
+  ctx.shadowColor='#FFD700';ctx.shadowBlur=20;
+  // Card body
+  var cg=ctx.createLinearGradient(-w/2,-h/2,w/2,h/2);
+  cg.addColorStop(0,'#c8a000');cg.addColorStop(0.4,'#FFD700');cg.addColorStop(1,'#b8900a');
+  ctx.fillStyle=cg;
+  ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,6);ctx.fill();
+  ctx.shadowBlur=0;
+  // Card stripe
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(-w/2,h*0.05,w,h*0.22);
+  // Chip
+  ctx.fillStyle='#c8a000';ctx.strokeStyle='#a07800';ctx.lineWidth=1;
+  ctx.fillRect(-w*0.28,-h*0.15,w*0.2,h*0.28);ctx.strokeRect(-w*0.28,-h*0.15,w*0.2,h*0.28);
+  ctx.strokeStyle='#a07800';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(-w*0.28,-h*0.01);ctx.lineTo(-w*0.08,-h*0.01);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-w*0.18,-h*0.15);ctx.lineTo(-w*0.18,h*0.13);ctx.stroke();
+  // Text
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.font='bold '+(h*0.22)+'px Nunito,sans-serif';ctx.textAlign='center';
+  ctx.fillText('x2 POINTS! 💳',0,h*0.38);
+  // Contactless symbol
+  ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=1.5;
+  [h*0.12,h*0.2,h*0.28].forEach(function(r){
+    ctx.beginPath();ctx.arc(w*0.28,0,r,-Math.PI*0.7,Math.PI*0.7);ctx.stroke();
+  });
+  // Border
+  ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,6);ctx.stroke();
+  ctx.restore();
+  item.rot+=item.rotSpd;
+}
+
+function drawFede(){
+  var H=canvas.height,W=canvas.width;
+  var groundY=H*0.82;
+  fedeX+=(mouseX-fedeX)*0.14;
+  fedeX=Math.max(40,Math.min(W-40,fedeX));
+  fedeY=groundY;
+  walkCycle+=0.14;
+  var bob=Math.sin(walkCycle*1.8)*2;
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.beginPath();ctx.ellipse(fedeX,fedeY+4,26,8,0,0,Math.PI*2);ctx.fill();
+
+  // Legs
+  ctx.strokeStyle='#2c3e50';ctx.lineWidth=10;ctx.lineCap='round';
+  var leg=Math.sin(walkCycle)*14;
+  ctx.beginPath();ctx.moveTo(fedeX-5,fedeY-12);ctx.lineTo(fedeX-9+leg,fedeY+20);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(fedeX+5,fedeY-12);ctx.lineTo(fedeX+9-leg,fedeY+20);ctx.stroke();
+  // Shoes
+  ctx.fillStyle='#1a252f';
+  ctx.beginPath();ctx.ellipse(fedeX-9+leg,fedeY+24,11,5,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(fedeX+9-leg,fedeY+24,11,5,0,0,Math.PI*2);ctx.fill();
+
+  // Body — Italian tricolour shirt
+  var bg=ctx.createLinearGradient(fedeX-17,0,fedeX+17,0);
+  bg.addColorStop(0,'#009246');bg.addColorStop(0.33,'#fff');
+  bg.addColorStop(0.66,'#fff');bg.addColorStop(1,'#ce2b37');
+  ctx.fillStyle=bg;
+  ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.ellipse(fedeX,fedeY-24+bob,17,21,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+  // Arms
+  var arm=Math.sin(walkCycle)*9;
+  ctx.strokeStyle='#fff';ctx.lineWidth=8;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(fedeX-13,fedeY-30+bob);ctx.lineTo(fedeX-28,-arm+fedeY-20+bob);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(fedeX+13,fedeY-30+bob);ctx.lineTo(fedeX+28,arm+fedeY-20+bob);ctx.stroke();
+  // Hands
+  ctx.fillStyle='#e8b090';
+  ctx.beginPath();ctx.arc(fedeX-30,-arm+fedeY-19+bob,7,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(fedeX+30,arm+fedeY-19+bob,7,0,Math.PI*2);ctx.fill();
+
+  // Head — full face with chin
+  ctx.save();ctx.translate(fedeX,fedeY-54+bob);
+  ctx.beginPath();ctx.arc(0,0,24,0,Math.PI*2);ctx.clip();
+  if(fedeImg.complete&&fedeImg.naturalWidth>0) ctx.drawImage(fedeImg,-24,-24,48,48);
+  else{ctx.fillStyle='#e8b090';ctx.fillRect(-24,-24,48,48);}
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle=hitFlash>0.3?'#e74c3c':happyFlash>0.3?'#27ae60':'#fff';
+  ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(fedeX,fedeY-54+bob,24,0,Math.PI*2);ctx.stroke();
+
+  // Chef hat
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.ellipse(fedeX,fedeY-76+bob,20,6,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#f5f5f5';
+  ctx.beginPath();ctx.ellipse(fedeX,fedeY-88+bob,15,18,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(fedeX,fedeY-76+bob,20,-Math.PI,0);ctx.stroke();
+}
+
+function drawParticles(){
+  particles=particles.filter(function(p){
+    p.life-=0.04;if(p.life<=0)return false;
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.vx*=0.97;
+    ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;return true;
+  });
+}
+
+function drawPopTexts(){
+  popTexts=popTexts.filter(function(p){
+    p.life-=0.022;if(p.life<=0)return false;
+    var y=p.y-(1-Math.min(p.life,1))*55;
+    ctx.globalAlpha=Math.min(1,p.life*2);
+    ctx.font='bold '+(p.size||22)+'px Fredoka One,cursive';ctx.textAlign='center';
+    ctx.strokeStyle='rgba(0,0,0,0.85)';ctx.lineWidth=3;
+    ctx.strokeText(p.text,p.x,y);ctx.fillStyle=p.color;ctx.fillText(p.text,p.x,y);
+    ctx.globalAlpha=1;return true;
+  });
+}
+
+function checkCollisions(){
+  var H=canvas.height;
+  var catchY=fedeY-20;
+  var catchRange=50;
+  items.forEach(function(item){
+    if(item.state!=='falling')return;
+    if(item.y>catchY-catchRange&&item.y<catchY+catchRange){
+      var dist=Math.abs(item.x-fedeX);
+      if(dist<item.size+30){
+        if(item.isCreditCard){
+          item.state='caught';
+          doublePoints=true;doubleTimer=5;
+          happyFlash=1;
+          for(var i=0;i<16;i++){
+            var a=Math.random()*Math.PI*2;
+            particles.push({x:item.x,y:item.y,vx:Math.cos(a)*6,vy:Math.sin(a)*6-2,color:'#FFD700',r:5+Math.random()*4,life:1});
+          }
+          popTexts.push({x:item.x,y:item.y-20,text:'DOUBLE POINTS! 💳',color:'#FFD700',life:1.5,size:24});
+          return;
+        }
+        if(item.isPizza){
+          item.state='caught';
+          var pts=doublePoints?20:10;
+          score+=pts;pizzas++;streak++;
+          if(streak>bestStreak)bestStreak=streak;
+          document.getElementById('pizzaD').textContent=pizzas;
+          happyFlash=1;
+          for(var i=0;i<14;i++){
+            var a=Math.random()*Math.PI*2;
+            particles.push({x:item.x,y:item.y,vx:Math.cos(a)*5,vy:Math.sin(a)*5-2,
+              color:['#e74c3c','#FFD700','#27ae60','#fff'][i%4],r:5+Math.random()*3,life:1});
+          }
+          var msgs=['MAMMA MIA! 🍕','PERFETTO!','BELLISSIMA! 🍕','CHE PIZZA! 😍','DELIZIOSO!'];
+          popTexts.push({x:item.x,y:item.y-20,text:(doublePoints?'x2! ':'')+msgs[randInt(0,msgs.length)],color:doublePoints?'#FFD700':'#27ae60',life:1,size:22});
+        } else {
+          item.state='hit';
+          lives--;bratsHit++;streak=0;hitFlash=1;
+          updateLives();
+          for(var i=0;i<10;i++){
+            var a=Math.random()*Math.PI*2;
+            particles.push({x:item.x,y:item.y,vx:Math.cos(a)*4,vy:Math.sin(a)*4,color:'#8B4513',r:5,life:1});
+          }
+          var bmsgs=['BRATWURST! 😱','NEIN NEIN! 🌭','NOT AGAIN! 😤','HAMBURG WHY!'];
+          popTexts.push({x:item.x,y:item.y-20,text:bmsgs[randInt(0,bmsgs.length)],color:'#e74c3c',life:1.2,size:20});
+          if(lives<=0){setTimeout(endGame,700);}
+        }
+      }
+    }
+  });
+}
+
+function gameLoop(){
+  if(!gameRunning)return;
+  items.forEach(function(item){
+    if(item.state==='falling'){item.y+=item.vy;}
+    else{item.alpha-=0.1;}
+  });
+  items=items.filter(function(item){
+    if(item.state==='falling'&&item.y>canvas.height+60)return false;
+    return item.alpha>0||(item.state==='falling');
+  });
+  drawBackground();
+  items.forEach(function(item){
+    if(item.alpha<=0)return;
+    if(item.isCreditCard)drawCreditCard(item);
+    else if(item.isPizza)drawPizza(item);
+    else drawBratwurst(item);
+  });
+  checkCollisions();
+  if(doublePoints){
+    doubleTimer-=1/60;
+    if(doubleTimer<=0){doublePoints=false;doubleTimer=0;}
+    // Show indicator
+    ctx.fillStyle='rgba(255,215,0,0.85)';
+    ctx.font='bold 14px Fredoka One,cursive';ctx.textAlign='center';
+    ctx.fillText('💳 x2 POINTS: '+Math.ceil(doubleTimer)+'s',canvas.width/2,72);
+  }
+  drawFede();
+  drawParticles();
+  drawPopTexts();
+  animFrame=requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  score=0;lives=3;pizzas=0;bratsHit=0;streak=0;bestStreak=0;
+  items=[];particles=[];popTexts=[];hitFlash=0;happyFlash=0;bgOffset=0;walkCycle=0;doublePoints=false;doubleTimer=0;totalCards=0;
+  var W=canvas.width,H=canvas.height;
+  fedeX=W/2;fedeY=H*0.82;mouseX=W/2;
+  gameRunning=true;
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('pizzaD').textContent='0';
+  updateLives();
+  if(spawnTimer)clearTimeout(spawnTimer);
+  if(animFrame)cancelAnimationFrame(animFrame);
+  var spawnDelay=900;
+  function scheduleItem(){
+    if(!gameRunning)return;
+    spawnItem();
+    spawnDelay=Math.max(420,spawnDelay-30);
+    spawnTimer=setTimeout(scheduleItem,spawnDelay);
+  }
+  setTimeout(scheduleItem,900);
+  animFrame=requestAnimationFrame(gameLoop);
+  // 1 minute timer
+  if(timerInterval)clearInterval(timerInterval);
+  var timeLeft=60,st=Date.now();
+  timerInterval=setInterval(function(){
+    if(!gameRunning){clearInterval(timerInterval);return;}
+    timeLeft=Math.max(0,60-(Date.now()-st)/1000);
+    var secs=Math.ceil(timeLeft);
+    var mins=Math.floor(secs/60);
+    var s=secs%60;
+    document.getElementById('timerD').textContent=mins+':'+(s<10?'0':'')+s;
+    if(timeLeft<=0){clearInterval(timerInterval);endGame();}
+  },100);
+  popTexts.push({x:W/2,y:H*0.5,text:'ANDIAMO FEDE! 🍕',color:'#e74c3c',life:2.5,size:32});
+}
+
+function endGame(){
+  gameRunning=false;
+  clearTimeout(spawnTimer);clearInterval(timerInterval);cancelAnimationFrame(animFrame);
+  document.getElementById('hud').style.display='none';
+  document.getElementById('finalScore').textContent=pizzas;
+  document.getElementById('endPizza').textContent=pizzas;
+  document.getElementById('endBrat').textContent=bratsHit;
+  document.getElementById('endStreak').textContent=bestStreak;
+  var emoji,text;
+  if(pizzas>=25){emoji='🏆';text='PIZZA MASTER. Nonna would be proud.';}
+  else if(pizzas>=18){emoji='🍕';text='MOLTO BENE! Hamburg cannot stop him.';}
+  else if(pizzas>=10){emoji='😤';text='NOT BAD. But the bratwursts won some.';}
+  else if(pizzas>=5){emoji='😬';text='Hamburg is winning. Send help.';}
+  else{emoji='🌭';text='COMPLETELY BRATWURSTED. Mamma mia.';}
+  document.getElementById('ratingEmoji').textContent=emoji;
+  document.getElementById('ratingText').textContent=text;
+  document.getElementById('startCard').style.display='none';
+  document.getElementById('endCard').style.display='block';
+  document.getElementById('overlay').style.display='flex';
+}
+
+window.addEventListener('resize',function(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+</script>
+</body>
+</html>
