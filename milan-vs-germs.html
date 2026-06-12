@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Milan vs The Germs</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:#0d1f0d;overflow:hidden;width:100vw;height:100vh;cursor:none}
+canvas{display:block;position:absolute;top:0;left:0}
+#ui{position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:none}
+.hud{background:rgba(13,31,13,0.95);border-bottom:3px solid #39d353;padding:0 20px;height:52px;display:none;align-items:center;justify-content:space-between}
+.hud-title{font-family:'Bebas Neue',cursive;font-size:20px;color:#39d353;letter-spacing:3px;text-shadow:0 0 10px rgba(57,211,83,0.6)}
+.hud-block{text-align:center;min-width:80px}
+.hud-label{font-size:10px;color:#39d353;letter-spacing:1.5px;text-transform:uppercase}
+.hud-value{font-family:'Bebas Neue',cursive;font-size:26px;color:#fff;line-height:1}
+.health-bar-wrap{width:140px;height:16px;background:rgba(0,0,0,0.5);border-radius:8px;border:2px solid #39d353;overflow:hidden}
+.health-bar{height:100%;background:linear-gradient(90deg,#e74c3c,#f39c12,#39d353);border-radius:6px;transition:width .2s}
+#timerBar{height:4px;background:rgba(0,0,0,0.4);display:none}
+#timerFill{height:100%;background:linear-gradient(90deg,#39d353,#f39c12,#e74c3c);transition:width .1s linear}
+#overlay{position:absolute;inset:0;background:rgba(5,15,5,0.93);display:flex;align-items:center;justify-content:center;z-index:20;pointer-events:all}
+.card{background:linear-gradient(160deg,#0d2a0d,#050f05);border-radius:16px;padding:28px 36px;text-align:center;max-width:430px;width:92%;border:3px solid #39d353;box-shadow:0 0 40px rgba(57,211,83,0.3),0 20px 60px rgba(0,0,0,0.7)}
+.card-title{font-family:'Bebas Neue',cursive;font-size:30px;color:#39d353;margin-bottom:2px;letter-spacing:2px;text-shadow:0 0 15px rgba(57,211,83,0.7)}
+.card-sub{font-size:10px;color:#e74c3c;letter-spacing:3px;text-transform:uppercase;margin-bottom:14px}
+.milan-av{width:76px;height:76px;border-radius:50%;overflow:hidden;border:4px solid #39d353;margin:0 auto 10px;box-shadow:0 0 25px rgba(57,211,83,0.5)}
+.milan-av img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.card p{font-size:13px;color:#aaa;margin-bottom:14px;line-height:1.7;font-family:'Nunito',sans-serif}
+.legend{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:14px}
+.legend-item{background:rgba(57,211,83,0.1);border:1px solid rgba(57,211,83,0.3);border-radius:6px;padding:6px 10px;font-size:12px;color:#ccc}
+.legend-item span{font-size:16px;margin-right:4px}
+.diff-row{display:flex;gap:8px;margin-bottom:14px;justify-content:center}
+.diff-btn{padding:6px 16px;border-radius:20px;border:2px solid rgba(255,255,255,0.15);background:transparent;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;color:#666;transition:all .15s;pointer-events:all}
+.diff-btn.active{border-color:#39d353;background:rgba(57,211,83,0.2);color:#39d353}
+.play-btn{background:linear-gradient(135deg,#39d353,#27ae60);color:#050f05;border:none;border-radius:8px;padding:12px 32px;font-family:'Bebas Neue',cursive;font-size:22px;cursor:pointer;letter-spacing:2px;transition:transform .1s,box-shadow .1s;box-shadow:0 5px 20px rgba(57,211,83,0.4);pointer-events:all}
+.play-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(57,211,83,0.6)}
+.play-btn:active{transform:scale(.97)}
+.big-time{font-family:'Bebas Neue',cursive;font-size:64px;color:#39d353;line-height:1;margin-bottom:4px;text-shadow:0 0 20px rgba(57,211,83,0.7)}
+.time-label{font-size:10px;color:#555;letter-spacing:2px;margin-bottom:8px}
+.result-stats{display:flex;gap:8px;margin:10px 0}
+.rs{background:rgba(57,211,83,0.1);border:1px solid rgba(57,211,83,0.25);border-radius:6px;padding:8px;flex:1}
+.rs-num{font-family:'Bebas Neue',cursive;font-size:22px;color:#fff}
+.rs-label{font-size:9px;color:#555;margin-top:2px;letter-spacing:1px}
+.rating{font-size:32px;margin-bottom:4px}
+.rating-text{font-size:11px;color:#39d353;margin-bottom:14px;line-height:1.8}
+.sick-note{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;color:#e74c3c;font-family:'Nunito',sans-serif;line-height:1.6}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="hud" id="hud">
+    <div class="hud-block">
+      <div class="hud-label">Health</div>
+      <div class="health-bar-wrap"><div class="health-bar" id="healthBar" style="width:100%"></div></div>
+    </div>
+    <div class="hud-title">MILAN vs THE GERMS</div>
+    <div class="hud-block">
+      <div class="hud-label">Survived</div>
+      <div class="hud-value" id="timeD">0s</div>
+    </div>
+  </div>
+  <div id="timerBar"><div id="timerFill" style="width:100%"></div></div>
+</div>
+<div id="overlay">
+  <div class="card" id="startCard">
+    <div class="card-title">MILAN vs THE GERMS</div>
+    <div class="card-sub">POST OFFICE WEEK SURVIVAL</div>
+    <div class="milan-av"><img id="milanStart" src="" alt="Milan"/></div>
+    <p>It's the Monday after office week.<br>Milan is already feeling it. 🤧<br>Help him survive as long as possible!</p>
+    <div class="legend">
+      <div class="legend-item"><span>🦠</span> Germs — avoid!</div>
+      <div class="legend-item"><span>💊</span> Paracetamol — grab it!</div>
+      <div class="legend-item"><span>🍊</span> Vitamin C — bonus health!</div>
+      <div class="legend-item"><span>😷</span> Mask — temporary shield!</div>
+    </div>
+    <div class="diff-row">
+      <button class="diff-btn active" onclick="setDiff('easy',this)">Sniffles</button>
+      <button class="diff-btn" onclick="setDiff('medium',this)">Fever</button>
+      <button class="diff-btn" onclick="setDiff('hard',this)">Full Flu</button>
+    </div>
+    <button class="play-btn" onclick="startGame()">SURVIVE! 🦠</button>
+  </div>
+  <div class="card" id="endCard" style="display:none">
+    <div class="card-title">MILAN IS SICK</div>
+    <div class="milan-av"><img id="milanEnd" src="" alt="Milan"/></div>
+    <div class="big-time" id="finalTime">0s</div>
+    <div class="time-label">SECONDS SURVIVED</div>
+    <div class="rating" id="ratingEmoji">🤧</div>
+    <div class="rating-text" id="ratingText"></div>
+    <div class="result-stats">
+      <div class="rs"><div class="rs-num" id="endTime">0s</div><div class="rs-label">SURVIVED</div></div>
+      <div class="rs"><div class="rs-num" id="endMeds">0</div><div class="rs-label">MEDS TAKEN</div></div>
+      <div class="rs"><div class="rs-num" id="endGerms">0</div><div class="rs-label">GERMS HIT</div></div>
+    </div>
+    <div class="sick-note">
+      🏥 Milan's sick note to HR:<br>
+      "Survived <span id="sickNoteTime">0</span>s before succumbing to<br>the post-office-week plague. Again."
+    </div>
+    <button class="play-btn" onclick="startGame()">TRY AGAIN 🦠</button>
+  </div>
+</div>
+
+<script>
+var MILAN_SRC='data:image/jpeg;base64,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';
+['milanStart','milanEnd'].forEach(function(id){var el=document.getElementById(id);if(el)el.src=MILAN_SRC;});
+var milanImg=new Image();milanImg.src=MILAN_SRC;
+
+var canvas=document.getElementById('c');
+var ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+var DIFFS={
+  easy:  {germSpawn:2200,germSpeed:[1.2,2.2],germSize:[18,26],damage:0.06,itemSpawn:4000},
+  medium:{germSpawn:1400,germSpeed:[1.8,3.2],germSize:[16,24],damage:0.10,itemSpawn:5000},
+  hard:  {germSpawn:800, germSpeed:[2.5,4.5],germSize:[14,22],damage:0.15,itemSpawn:6500}
+};
+var diff='easy';
+function setDiff(d,btn){
+  diff=d;
+  document.querySelectorAll('.diff-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+}
+
+var mouseX=canvas.width/2,mouseY=canvas.height/2;
+var milanX=canvas.width/2,milanY=canvas.height/2;
+var health=100,maxHealth=100;
+var germs=[],items=[],popTexts=[],particles=[];
+var gameRunning=false;
+var survivalTime=0,medsTaken=0,germsHit=0;
+var spawnTimer=null,itemTimer=null,gameTimer=null;
+var shielded=false,shieldTimer=0;
+var animFrame=null;
+
+canvas.addEventListener('mousemove',function(e){mouseX=e.clientX;mouseY=e.clientY;});
+
+// Germ types with colors
+var GERM_COLORS=['#39d353','#85e89d','#56d364','#3fb950','#2ea043'];
+var GERM_TYPES=[
+  {emoji:'🦠',label:'Rhinovirus'},
+  {emoji:'🦠',label:'Influenza'},
+  {emoji:'🧫',label:'Bacteria'},
+  {emoji:'☣️',label:'Office Plague'},
+  {emoji:'🦠',label:'Post-Meeting Bug'},
+];
+
+var ITEM_TYPES=[
+  {emoji:'💊',label:'Paracetamol',color:'#e74c3c',heal:25,shield:false},
+  {emoji:'🍊',label:'Vitamin C',color:'#f39c12',heal:15,shield:false},
+  {emoji:'😷',label:'Face Mask',color:'#3498db',heal:0,shield:true},
+  {emoji:'💉',label:'Vaccine',color:'#9b59b6',heal:40,shield:false},
+];
+
+function spawnGerm(){
+  if(!gameRunning) return;
+  var cfg=DIFFS[diff];
+  var W=canvas.width,H=canvas.height;
+  var side=Math.floor(Math.random()*4);
+  var x,y;
+  if(side===0){x=Math.random()*W;y=-30;}
+  else if(side===1){x=W+30;y=Math.random()*H;}
+  else if(side===2){x=Math.random()*W;y=H+30;}
+  else{x=-30;y=Math.random()*H;}
+  var spd=cfg.germSpeed[0]+Math.random()*(cfg.germSpeed[1]-cfg.germSpeed[0]);
+  var sz=cfg.germSize[0]+Math.random()*(cfg.germSize[1]-cfg.germSize[0]);
+  var type=GERM_TYPES[Math.floor(Math.random()*GERM_TYPES.length)];
+  var color=GERM_COLORS[Math.floor(Math.random()*GERM_COLORS.length)];
+  germs.push({x:x,y:y,speed:spd,size:sz,type:type,color:color,
+    angle:Math.random()*Math.PI*2,wobble:Math.random()*0.1,wobbleT:0,
+    id:Date.now()+Math.random()});
+}
+
+function spawnItem(){
+  if(!gameRunning) return;
+  var W=canvas.width,H=canvas.height;
+  var type=ITEM_TYPES[Math.floor(Math.random()*ITEM_TYPES.length)];
+  items.push({
+    x:80+Math.random()*(W-160),
+    y:80+Math.random()*(H-160),
+    type:type,
+    life:8000,
+    spawnTime:Date.now(),
+    pulse:0
+  });
+}
+
+function updateGerms(){
+  germs.forEach(function(g){
+    var dx=milanX-g.x,dy=milanY-g.y;
+    var d=Math.sqrt(dx*dx+dy*dy)||1;
+    g.wobbleT+=0.1;
+    var wobX=Math.cos(g.wobbleT*3)*g.wobble*g.speed;
+    var wobY=Math.sin(g.wobbleT*2.3)*g.wobble*g.speed;
+    g.x+=dx/d*g.speed+wobX;
+    g.y+=dy/d*g.speed+wobY;
+    g.angle+=0.05;
+  });
+}
+
+function checkCollisions(){
+  var cfg=DIFFS[diff];
+  // Germ hits
+  germs=germs.filter(function(g){
+    var dx=milanX-g.x,dy=milanY-g.y;
+    var d=Math.sqrt(dx*dx+dy*dy);
+    if(d<g.size+22){
+      if(!shielded){
+        health-=cfg.damage*100;
+        germsHit++;
+        popTexts.push({x:milanX,y:milanY-30,text:'OUCH! 🤧',color:'#e74c3c',life:1});
+        // Knockback particles
+        for(var i=0;i<6;i++){
+          var a=Math.random()*Math.PI*2;
+          particles.push({x:g.x,y:g.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,color:g.color,r:4,life:1});
+        }
+        if(health<=0){health=0;endGame();return false;}
+      } else {
+        // Shield deflects
+        popTexts.push({x:g.x,y:g.y-20,text:'BLOCKED! 😷',color:'#3498db',life:0.8});
+        for(var i=0;i<4;i++){
+          var a=Math.random()*Math.PI*2;
+          particles.push({x:g.x,y:g.y,vx:Math.cos(a)*5,vy:Math.sin(a)*5,color:'#3498db',r:5,life:1});
+        }
+      }
+      return false; // germ disappears on hit
+    }
+    // Remove if off screen far
+    var W=canvas.width,H=canvas.height;
+    return g.x>-100&&g.x<W+100&&g.y>-100&&g.y<H+100;
+  });
+
+  // Item pickups
+  items=items.filter(function(item){
+    var dx=milanX-item.x,dy=milanY-item.y;
+    var d=Math.sqrt(dx*dx+dy*dy);
+    if(d<38){
+      if(item.type.shield){
+        shielded=true;shieldTimer=5000;
+        popTexts.push({x:item.x,y:item.y-20,text:'SHIELDED! 😷',color:'#3498db',life:1});
+      } else {
+        health=Math.min(maxHealth,health+item.type.heal);
+        popTexts.push({x:item.x,y:item.y-20,text:'+'+item.type.heal+'% 💊',color:'#39d353',life:1});
+      }
+      medsTaken++;
+      for(var i=0;i<10;i++){
+        var a=Math.random()*Math.PI*2;
+        particles.push({x:item.x,y:item.y,vx:Math.cos(a)*(2+Math.random()*3),vy:Math.sin(a)*(2+Math.random()*3),color:item.type.color,r:4+Math.random()*3,life:1});
+      }
+      return false;
+    }
+    return Date.now()-item.spawnTime<item.life;
+  });
+
+  // Update shield
+  if(shielded){
+    shieldTimer-=16;
+    if(shieldTimer<=0) shielded=false;
+  }
+
+  // Update health bar
+  var pct=Math.max(0,health/maxHealth*100);
+  document.getElementById('healthBar').style.width=pct+'%';
+  // Passive health drain
+  health-=DIFFS[diff].damage*0.08;
+  if(health<=0){health=0;endGame();}
+}
+
+function drawBackground(){
+  var W=canvas.width,H=canvas.height;
+  // Dark sick green background
+  ctx.fillStyle='#060f06';
+  ctx.fillRect(0,0,W,H);
+  // Subtle biohazard grid
+  ctx.strokeStyle='rgba(57,211,83,0.04)';
+  ctx.lineWidth=1;
+  var gs=50;
+  for(var x=0;x<W;x+=gs) {ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(var y=0;y<H;y+=gs) {ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  // Vignette
+  var g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.2,W/2,H/2,Math.min(W,H)*0.8);
+  g.addColorStop(0,'transparent');
+  g.addColorStop(1,'rgba(0,0,0,0.5)');
+  ctx.fillStyle=g;
+  ctx.fillRect(0,0,W,H);
+  // Low health red vignette
+  if(health<30){
+    var intensity=((30-health)/30)*0.4;
+    var rg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.2,W/2,H/2,Math.min(W,H)*0.8);
+    rg.addColorStop(0,'transparent');
+    rg.addColorStop(1,'rgba(231,76,60,'+intensity+')');
+    ctx.fillStyle=rg;
+    ctx.fillRect(0,0,W,H);
+  }
+}
+
+function drawGerm(g){
+  ctx.save();
+  ctx.translate(g.x,g.y);
+  ctx.rotate(g.angle);
+  // Germ body - wobbly circle with spikes
+  ctx.fillStyle=g.color;
+  ctx.globalAlpha=0.85;
+  ctx.beginPath();
+  var spikes=8;
+  for(var i=0;i<spikes*2;i++){
+    var r=i%2===0?g.size:g.size*0.65;
+    var a=(i/spikes)*Math.PI;
+    if(i===0) ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+    else ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  // Inner glow
+  ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.beginPath();ctx.arc(0,0,g.size*0.4,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  // Emoji face
+  ctx.font=(g.size*0.9)+'px serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🦠',0,0);
+  ctx.restore();
+}
+
+function drawItem(item){
+  var age=(Date.now()-item.spawnTime)/item.life;
+  var pulse=Math.sin(Date.now()*0.005)*3;
+  var alpha=age>0.7?1-(age-0.7)/0.3:1;
+  ctx.globalAlpha=alpha;
+  // Glow ring
+  ctx.strokeStyle=item.type.color;
+  ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(item.x,item.y,22+pulse,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=item.type.color+'22';
+  ctx.beginPath();ctx.arc(item.x,item.y,22+pulse,0,Math.PI*2);ctx.fill();
+  // Emoji
+  ctx.font='26px serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(item.type.emoji,item.x,item.y);
+  ctx.globalAlpha=1;
+}
+
+function drawMilan(){
+  // Shield ring
+  if(shielded){
+    var sr=38+Math.sin(Date.now()*0.01)*3;
+    ctx.strokeStyle='rgba(52,152,219,0.7)';
+    ctx.lineWidth=3;
+    ctx.setLineDash([8,4]);
+    ctx.beginPath();ctx.arc(milanX,milanY,sr,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(52,152,219,0.1)';
+    ctx.beginPath();ctx.arc(milanX,milanY,sr,0,Math.PI*2);ctx.fill();
+  }
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.beginPath();ctx.ellipse(milanX+3,milanY+26,22,7,0,0,Math.PI*2);ctx.fill();
+  // Photo circle
+  ctx.save();
+  ctx.beginPath();ctx.arc(milanX,milanY,24,0,Math.PI*2);ctx.clip();
+  if(milanImg.complete&&milanImg.naturalWidth>0){
+    ctx.drawImage(milanImg,milanX-24,milanY-24,48,48);
+  } else {
+    ctx.fillStyle='#888';ctx.fillRect(milanX-24,milanY-24,48,48);
+  }
+  ctx.restore();
+  // Border - red when low health, green otherwise
+  ctx.strokeStyle=health<30?'#e74c3c':health<60?'#f39c12':'#39d353';
+  ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(milanX,milanY,24,0,Math.PI*2);ctx.stroke();
+  // Low health pulse
+  if(health<30&&Math.floor(Date.now()/400)%2===0){
+    ctx.strokeStyle='rgba(231,76,60,0.4)';
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(milanX,milanY,32,0,Math.PI*2);ctx.stroke();
+  }
+  // Name
+  ctx.font='bold 10px Nunito,sans-serif';
+  ctx.textAlign='center';
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  ctx.fillText('Milan',milanX,milanY+38);
+}
+
+function drawParticles(){
+  particles=particles.filter(function(p){
+    p.life-=0.05;
+    if(p.life<=0) return false;
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+    return true;
+  });
+}
+
+function drawPopTexts(){
+  popTexts=popTexts.filter(function(p){
+    p.life-=0.03;
+    if(p.life<=0) return false;
+    var y=p.y-(1-p.life)*50;
+    ctx.globalAlpha=Math.min(1,p.life*2);
+    ctx.font='bold 20px Bebas Neue,cursive';
+    ctx.textAlign='center';
+    ctx.strokeStyle='rgba(0,0,0,0.8)';ctx.lineWidth=3;
+    ctx.strokeText(p.text,p.x,y);
+    ctx.fillStyle=p.color;ctx.fillText(p.text,p.x,y);
+    ctx.globalAlpha=1;
+    return true;
+  });
+}
+
+function gameLoop(){
+  if(!gameRunning) return;
+  // Smooth Milan movement
+  milanX+=(mouseX-milanX)*0.18;
+  milanY+=(mouseY-milanY)*0.18;
+  milanX=Math.max(30,Math.min(canvas.width-30,milanX));
+  milanY=Math.max(56,Math.min(canvas.height-30,milanY));
+
+  updateGerms();
+  checkCollisions();
+
+  drawBackground();
+  items.forEach(function(i){drawItem(i);});
+  germs.forEach(function(g){drawGerm(g);});
+  drawMilan();
+  drawParticles();
+  drawPopTexts();
+
+  requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  health=maxHealth;germs=[];items=[];popTexts=[];particles=[];
+  survivalTime=0;medsTaken=0;germsHit=0;shielded=false;shieldTimer=0;
+  milanX=canvas.width/2;milanY=canvas.height/2;
+  gameRunning=true;
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('timerBar').style.display='block';
+  document.getElementById('healthBar').style.width='100%';
+  var cfg=DIFFS[diff];
+  if(spawnTimer) clearInterval(spawnTimer);
+  if(itemTimer) clearInterval(itemTimer);
+  if(gameTimer) clearInterval(gameTimer);
+  spawnTimer=setInterval(spawnGerm,cfg.germSpawn);
+  itemTimer=setInterval(spawnItem,cfg.itemSpawn);
+  var startTime=Date.now();
+  // Spawn first item immediately
+  setTimeout(spawnItem,1500);
+  gameTimer=setInterval(function(){
+    survivalTime=(Date.now()-startTime)/1000;
+    document.getElementById('timeD').textContent=Math.floor(survivalTime)+'s';
+    document.getElementById('timerFill').style.width=Math.max(0,100-survivalTime/60*100)+'%';
+  },200);
+  if(animFrame) cancelAnimationFrame(animFrame);
+  requestAnimationFrame(gameLoop);
+}
+
+function endGame(){
+  gameRunning=false;
+  clearInterval(spawnTimer);clearInterval(itemTimer);clearInterval(gameTimer);
+  germs=[];items=[];
+  document.getElementById('hud').style.display='none';
+  document.getElementById('timerBar').style.display='none';
+  var t=Math.floor(survivalTime);
+  document.getElementById('finalTime').textContent=t+'s';
+  document.getElementById('endTime').textContent=t+'s';
+  document.getElementById('endMeds').textContent=medsTaken;
+  document.getElementById('endGerms').textContent=germsHit;
+  document.getElementById('sickNoteTime').textContent=t;
+  var emoji,text;
+  if(t>=60){emoji='🏆';text='INCREDIBLE! Milan stayed healthy! HR is suspicious.';}
+  else if(t>=40){emoji='💪';text='Impressive resistance! Only slightly contagious.';}
+  else if(t>=25){emoji='🤧';text='Not bad! Milan is stronger than expected.';}
+  else if(t>=12){emoji='🤒';text='Went down faster than a free pizza at a meeting.';}
+  else{emoji='🏥';text='Straight to bed. Sick note on the way.';}
+  document.getElementById('ratingEmoji').textContent=emoji;
+  document.getElementById('ratingText').textContent=text;
+  document.getElementById('startCard').style.display='none';
+  document.getElementById('endCard').style.display='block';
+  document.getElementById('overlay').style.display='flex';
+}
+
+window.addEventListener('resize',function(){
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+});
+</script>
+</body>
+</html>
