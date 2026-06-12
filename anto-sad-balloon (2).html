@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Find the Sad Balloon!</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Fredoka+One&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:linear-gradient(180deg,#5BC8F5 0%,#87CEEB 60%,#c8f0a0 100%);overflow:hidden;width:100vw;height:100vh;user-select:none}
+#gameArea{position:absolute;inset:0;overflow:hidden;z-index:2}
+#ui{position:absolute;top:0;left:0;right:0;z-index:20;pointer-events:none}
+.hud{background:rgba(255,255,255,0.28);backdrop-filter:blur(8px);border-bottom:2px solid rgba(255,255,255,0.5);padding:0 20px;height:54px;display:none;align-items:center;justify-content:space-between}
+.hud-block{text-align:center}
+.hud-label{font-size:10px;color:rgba(255,255,255,0.9);letter-spacing:1px;text-transform:uppercase;font-weight:700}
+.hud-value{font-family:'Fredoka One',cursive;font-size:26px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.2);line-height:1}
+.hud-title{font-family:'Fredoka One',cursive;font-size:18px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.2)}
+#timerBar{height:5px;background:rgba(255,255,255,0.3);display:none}
+#timerFill{height:100%;background:linear-gradient(90deg,#4CAF50,#FFD700,#FF5722);transition:width .1s linear}
+#bonusBanner{position:absolute;top:62px;left:50%;transform:translateX(-50%);z-index:30;display:none;pointer-events:none;text-align:center}
+.bonus-text{font-family:'Fredoka One',cursive;font-size:30px;color:#fff;text-shadow:0 0 20px rgba(255,100,0,0.8),0 3px 8px rgba(0,0,0,0.3);background:linear-gradient(135deg,rgba(255,100,0,0.88),rgba(255,40,0,0.88));border-radius:16px;padding:8px 24px;letter-spacing:2px;animation:bonusPulse .45s ease-in-out infinite alternate}
+@keyframes bonusPulse{0%{transform:scale(1)}100%{transform:scale(1.06)}}
+.bonus-timer-txt{font-family:'Fredoka One',cursive;font-size:22px;color:#fff;margin-top:3px;text-shadow:0 2px 4px rgba(0,0,0,0.3)}
+#judgePanel{position:absolute;bottom:20px;right:20px;z-index:100;display:none;flex-direction:column;align-items:center;gap:4px}
+.judge-av{width:64px;height:64px;border-radius:50%;overflow:hidden;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.2);transition:all .3s}
+.judge-av img{width:100%;height:100%;object-fit:cover;object-position:center top;transition:filter .3s}
+.judge-av.happy{border-color:#4CAF50;box-shadow:0 4px 20px rgba(76,175,80,0.7)}
+.judge-av.sad{border-color:#e74c3c;box-shadow:0 4px 20px rgba(231,76,60,0.6)}
+.judge-av.bonus{border-color:#FF6B00;box-shadow:0 0 25px rgba(255,107,0,0.9);animation:jPulse .4s ease-in-out infinite alternate}
+@keyframes jPulse{0%{transform:scale(1)}100%{transform:scale(1.12)}}
+.judge-av.sad img{filter:grayscale(70%)}
+.judge-name{font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.3);letter-spacing:1px}
+.judge-reaction{font-size:20px;transition:all .3s}
+.judge-bubble{background:rgba(255,255,255,0.95);border-radius:10px;padding:4px 8px;font-size:11px;font-weight:800;color:#333;max-width:95px;text-align:center;display:none;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+#overlay{position:absolute;inset:0;background:rgba(0,0,0,0.3);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:300}
+.card{background:rgba(255,255,255,0.97);border-radius:24px;padding:28px 36px;text-align:center;max-width:400px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,0.2)}
+.card h1{font-family:'Fredoka One',cursive;font-size:32px;color:#e74c3c;margin-bottom:6px}
+.card .sub{font-size:13px;color:#666;margin-bottom:16px;font-weight:700;line-height:1.7}
+.anto-av{width:68px;height:68px;border-radius:50%;overflow:hidden;border:4px solid #e74c3c;margin:0 auto 8px;box-shadow:0 4px 16px rgba(231,76,60,0.3)}
+.anto-av img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.anto-title{font-size:11px;font-weight:800;color:#e74c3c;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.anto-quote-sub{font-size:11px;color:#aaa;font-style:italic;margin-bottom:16px}
+.stat-row{display:flex;gap:10px;margin-bottom:16px}
+.stat{background:#f8f8f8;border-radius:12px;padding:8px;flex:1;text-align:center}
+.stat-num{font-family:'Fredoka One',cursive;font-size:26px;color:#e74c3c}
+.stat-label{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.8px}
+.play-btn{background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;border-radius:50px;padding:12px 36px;font-family:'Fredoka One',cursive;font-size:20px;cursor:pointer;box-shadow:0 6px 20px rgba(231,76,60,0.4);transition:transform .1s}
+.play-btn:hover{transform:translateY(-2px)}
+.play-btn:active{transform:scale(.97)}
+.rating{font-size:34px;margin-bottom:4px}
+.rating-text{font-size:15px;font-weight:800;color:#333;margin-bottom:4px}
+.anto-end-quote{font-size:12px;color:#aaa;font-style:italic;margin-bottom:14px}
+
+.pop-text{position:absolute;font-family:'Fredoka One',cursive;font-size:24px;pointer-events:none;animation:popAnim .7s ease-out forwards;z-index:150}
+@keyframes popAnim{0%{opacity:1;transform:scale(0.5) translateY(0)}50%{opacity:1;transform:scale(1.3) translateY(-20px)}100%{opacity:0;transform:scale(1) translateY(-50px)}}
+.confetti-p{position:absolute;border-radius:3px;pointer-events:none;animation:cFall linear forwards;z-index:160}
+@keyframes cFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(100px) rotate(540deg)}}
+.balloon-el{position:absolute;cursor:pointer;z-index:50;will-change:transform}
+</style>
+</head>
+<body>
+<div id="gameArea"></div>
+<div id="ui">
+  <div class="hud" id="hud">
+    <div class="hud-block"><div class="hud-label">Score</div><div class="hud-value" id="scoreD">0</div></div>
+    <div class="hud-title">🎈 Find the Sad Balloon!</div>
+    <div class="hud-block">
+      <div class="hud-label">Popped</div>
+      <div class="hud-value" id="poppedD">0</div>
+    </div>
+  </div>
+  <div id="timerBar"><div id="timerFill" style="width:100%"></div></div>
+</div>
+<div id="bonusBanner">
+  <div class="bonus-text">🎉 BONUS ROUND! POP THEM ALL! 🎉</div>
+  <div class="bonus-timer-txt" id="bonusTxt">3</div>
+</div>
+<div id="judgePanel">
+  <div class="judge-reaction" id="judgeReaction">👀</div>
+  <div class="judge-av" id="judgeAv"><img id="judgeImg" src="" alt="Anto"/></div>
+  <div class="judge-name">ANTO</div>
+  <div class="judge-bubble" id="judgeBubble"></div>
+</div>
+<div id="overlay">
+  <div class="card" id="startCard">
+    <div class="anto-av"><img id="antoStart" src="" alt="Anto"/></div>
+    <div class="anto-title">Antonella — Official Balloon Popping Judge</div>
+    <div class="anto-quote-sub">"She designed the sad balloon. Now she judges you for missing it."</div>
+    <h1>Find the Sad Balloon!</h1>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left">
+      <div style="background:#fff5f5;border-radius:10px;padding:9px 14px;font-size:12px;color:#555;font-weight:700;font-family:Nunito,sans-serif;border-left:3px solid #e74c3c">
+        🎈 Balloons float up constantly — find and pop the <span style="color:#e74c3c">sad one!</span>
+      </div>
+      <div style="background:#fff5f5;border-radius:10px;padding:9px 14px;font-size:12px;color:#555;font-weight:700;font-family:Nunito,sans-serif;border-left:3px solid #FF6B00">
+        🎉 Every 25 seconds ALL balloons go sad — pop as many as you can!
+      </div>
+      <div style="background:#fff5f5;border-radius:10px;padding:9px 14px;font-size:12px;color:#555;font-weight:700;font-family:Nunito,sans-serif;border-left:3px solid #4CAF50">
+        ⏱️ You have <span style="color:#e74c3c">1 minute.</span> Wrong clicks cost -10 points. Anto is watching. 👀
+      </div>
+    </div>
+    <button class="play-btn" onclick="startGame()">LET S POP! 🎈</button>
+  </div>
+  <div class="card" id="endCard" style="display:none">
+    <div class="anto-av"><img id="antoEnd" src="" alt="Anto"/></div>
+    <h1>Game Over!</h1>
+    <div class="rating" id="ratingEmoji">🎈</div>
+    <div class="rating-text" id="ratingText"></div>
+    <div class="anto-end-quote" id="antoQuote"></div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-num" id="endScore">0</div><div class="stat-label">Score</div></div>
+      <div class="stat"><div class="stat-num" id="endPopped">0</div><div class="stat-label">Popped</div></div>
+      <div class="stat"><div class="stat-num" id="endBonus">0</div><div class="stat-label">Bonus Pops</div></div>
+    </div>
+    <button class="play-btn" onclick="startGame()">Again! 🎈</button>
+  </div>
+</div>
+
+<script>
+var ANTO_SRC='data:image/jpeg;base64,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';
+['antoStart','antoEnd','judgeImg'].forEach(function(id){var el=document.getElementById(id);if(el)el.src=ANTO_SRC;});
+
+var COLORS=['#FF6B9D','#FF9F43','#FFD93D','#6BCB77','#4D96FF','#C44DFF','#FF6B6B','#1DD1A1','#FF8C42','#A29BFE','#00CEC9','#FDCB6E'];
+var HAPPY=['😊','😄','😁','🥳','😃','😀','🤩','😆','😍','🎉'];
+var SAD=['☹️','😢','😞','😔','🥺'];
+
+var score=0,popped=0,bonusPopped=0,gameRunning=false;
+var balloons=[],timerInterval=null,bonusInterval=null,spawnLoop=null,animFrame=null,bonusCountdown=null,judgeTimeout=null;
+var timeLeft=60,difficulty=1,bonusActive=false,bonusTimeLeft=0;
+var balloonIdCounter=0;
+var HQ=['Perfect! 🎉','Yes!! 🎊','Found it!','Good eye! ✨','That one! 🎯'];
+var WQ=['Wrong one! 😤','Not that one!','Focus!! 🙄','Really?? 😩','No no no!'];
+var MQ=['It escaped! 😱','Too slow! 🐌','Come on!! 😤','Missed it!'];
+var BQ=['POP THEM ALL!!','GO GO GO! 🎉','DONT STOP! 💥'];
+
+function rand(a,b){return Math.random()*(b-a)+a;}
+function randInt(a,b){return Math.floor(rand(a,b));}
+
+function setJudge(state,quote){
+  var av=document.getElementById('judgeAv'),r=document.getElementById('judgeReaction'),b=document.getElementById('judgeBubble');
+  av.className='judge-av '+state;
+  r.textContent=state==='happy'?'😄':state==='sad'?'😤':state==='miss'?'😱':state==='bonus'?'🤩':'👀';
+  if(quote){
+    b.textContent=quote;b.style.display='block';
+    if(judgeTimeout)clearTimeout(judgeTimeout);
+    judgeTimeout=setTimeout(function(){b.style.display='none';if(!bonusActive)setJudge('watching');},1500);
+  }
+}
+function updateMissPips(){}
+function showPop(x,y,text,color){
+  var el=document.createElement('div');el.className='pop-text';el.textContent=text;
+  el.style.left=(x-30)+'px';el.style.top=(y-20)+'px';el.style.color=color;
+  document.getElementById('gameArea').appendChild(el);
+  setTimeout(function(){if(el.parentNode)el.remove();},700);
+}
+function spawnConfetti(cx,cy,color){
+  var cols=[color,'#FFD700','#fff','#FF6B9D','#6BCB77'];
+  for(var i=0;i<16;i++){
+    var c=document.createElement('div');c.className='confetti-p';
+    c.style.left=(cx+rand(-30,30))+'px';c.style.top=(cy+rand(-20,20))+'px';
+    c.style.width=rand(5,11)+'px';c.style.height=rand(5,11)+'px';
+    c.style.background=cols[randInt(0,cols.length)];
+    c.style.animationDuration=rand(0.4,0.8)+'s';
+    document.getElementById('gameArea').appendChild(c);
+    setTimeout(function(){if(c.parentNode)c.remove();},900);
+  }
+}
+
+// Core: make one balloon DOM element and add to live list
+function makeBalloon(isSad){
+  var id=++balloonIdCounter;
+  var W=window.innerWidth,H=window.innerHeight;
+  var size=randInt(52,70);
+  var color=COLORS[randInt(0,COLORS.length)];
+  var face=isSad?SAD[randInt(0,SAD.length)]:HAPPY[randInt(0,HAPPY.length)];
+  var x=rand(30,W-80);
+  // Speed — faster base
+  var spd=isSad?rand(0.7,1.1):rand(1.4,2.2)+(difficulty*0.03);
+  var wobble=rand(0,Math.PI*2);
+  var stringLen=Math.floor(size*0.36);
+
+  var el=document.createElement('div');
+  el.className='balloon-el';
+  el.style.cssText='left:'+x+'px;bottom:-'+(size+stringLen+10)+'px;position:absolute;';
+
+  el.innerHTML='<svg width="'+size+'" height="'+(size+stringLen+8)+'" xmlns="http://www.w3.org/2000/svg">'+
+    '<ellipse cx="'+(size/2)+'" cy="'+(size*0.48)+'" rx="'+(size*0.46)+'" ry="'+(size*0.48)+'" fill="'+color+'" stroke="rgba(0,0,0,0.07)" stroke-width="1.5"/>'+
+    '<ellipse cx="'+(size*0.35)+'" cy="'+(size*0.27)+'" rx="'+(size*0.1)+'" ry="'+(size*0.08)+'" fill="rgba(255,255,255,0.42)"/>'+
+    '<text x="'+(size/2)+'" y="'+(size*0.6)+'" font-size="'+(size*0.42)+'" text-anchor="middle" dominant-baseline="middle">'+face+'</text>'+
+    (isSad?'<ellipse cx="'+(size*0.3)+'" cy="'+(size*0.76)+'" rx="'+(size*0.05)+'" ry="'+(size*0.08)+'" fill="rgba(100,180,255,0.85)"/>':'')+
+    '<line x1="'+(size/2)+'" y1="'+(size*0.97)+'" x2="'+(size/2)+'" y2="'+(size*0.97+stringLen)+'" stroke="rgba(0,0,0,0.18)" stroke-width="1.5"/>'+
+    '<circle cx="'+(size/2)+'" cy="'+(size*0.97+stringLen+4)+'" r="3" fill="'+color+'"/>'+
+  '</svg>';
+
+  el.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(!gameRunning) return;
+    var liveBalloon = balloons.find(function(b){return b.id===id;});
+    var currentIsSad = bonusActive || (liveBalloon && liveBalloon.isSad);
+    if(currentIsSad){
+      var pts=bonusActive?30:Math.max(50,120-difficulty*3);
+      score+=pts;popped++;
+      if(bonusActive)bonusPopped++;
+      difficulty++;
+      document.getElementById('scoreD').textContent=score;
+      document.getElementById('poppedD').textContent=popped;
+      showPop(x+size/2,H-parseFloat(el.style.bottom)-size/2,'+'+pts+(bonusActive?' 🎉':''),'#e74c3c');
+      spawnConfetti(x+size/2,H-parseFloat(el.style.bottom)-size/2,color);
+      if(!bonusActive)setJudge('happy',HQ[randInt(0,HQ.length)]);
+      // JUST remove this one balloon — nothing else changes
+      el.remove();
+      balloons=balloons.filter(function(b){return b.id!==id;});
+      // If no sad balloon remains and not bonus, quietly mark one existing happy balloon as sad
+      if(!bonusActive){
+        var sadLeft=balloons.filter(function(b){return b.isSad;}).length;
+        if(sadLeft<2) convertOneBalloonToSad();
+        if(sadLeft<1) convertOneBalloonToSad();
+      }
+    } else {
+      // Wrong click — lose 10 points
+      score=Math.max(0,score-10);
+      document.getElementById('scoreD').textContent=score;
+      showPop(x+size/2,H-parseFloat(el.style.bottom)-size/2,'-10 😬','#e74c3c');
+      setJudge('sad',WQ[randInt(0,WQ.length)]);
+      el.style.transition='transform .08s';el.style.transform='scale(1.15)';
+      setTimeout(function(){if(el.parentNode)el.style.transform='scale(1)';},100);
+    }
+  });
+
+  document.getElementById('gameArea').appendChild(el);
+  var b={id:id,el:el,isSad:isSad,x:x,size:size,spd:spd,wobble:wobble,born:Date.now()};
+  balloons.push(b);
+  return b;
+}
+
+// Convert one random happy balloon to sad — seamless, no removal
+function convertOneBalloonToSad(){
+  var happy=balloons.filter(function(b){return !b.isSad;});
+  if(happy.length===0) return;
+  var target=happy[randInt(0,happy.length)];
+  target.isSad=true;
+  // Swap face to sad in SVG
+  var txt=target.el.querySelector('text');
+  if(txt) txt.textContent=SAD[randInt(0,SAD.length)];
+  // Add teardrop
+  var svg=target.el.querySelector('svg');
+  if(svg&&!target.el.querySelector('.tear')){
+    var tear=document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+    tear.setAttribute('cx',target.size*0.3);
+    tear.setAttribute('cy',target.size*0.76);
+    tear.setAttribute('rx',target.size*0.05);
+    tear.setAttribute('ry',target.size*0.08);
+    tear.setAttribute('fill','rgba(100,180,255,0.85)');
+    tear.setAttribute('class','tear');
+    svg.appendChild(tear);
+  }
+}
+
+// Convert ALL balloons to sad (bonus round)
+function convertAllToSad(){
+  balloons.forEach(function(b){
+    if(b.isSad) return;
+    b.isSad=true;
+    var txt=b.el.querySelector('text');
+    if(txt) txt.textContent=SAD[randInt(0,SAD.length)];
+  });
+}
+
+// Animation loop using requestAnimationFrame
+function animLoop(){
+  if(!gameRunning){cancelAnimationFrame(animFrame);return;}
+  var now=Date.now();
+  var H=window.innerHeight;
+  balloons=balloons.filter(function(b){
+    if(!b.el||!b.el.parentNode) return false;
+    var elapsed=(now-b.born)/1000;
+    var bottom=parseFloat(b.el.style.bottom)||-(b.size+50);
+    var newBottom=bottom+b.spd;
+    var wobX=Math.sin(elapsed*2+b.wobble)*10;
+    b.el.style.bottom=newBottom+'px';
+    b.el.style.left=(b.x+wobX)+'px';
+    // Balloon floated off screen top
+    if(newBottom>H+80){
+      // If it was sad and not bonus, count as miss
+      if(b.isSad&&!bonusActive){
+        // Sad balloon escaped — just convert another one, no penalty
+        setJudge('miss',MQ[randInt(0,MQ.length)]);
+        b.el.remove();
+        balloons=balloons.filter(function(bb){return bb.id!==b.id;});
+        convertOneBalloonToSad();
+        var sl=balloons.filter(function(bb){return bb.isSad;}).length;
+        if(sl<2) setTimeout(convertOneBalloonToSad,300);
+        return false;
+      }
+      b.el.remove();
+      return false;
+    }
+    return true;
+  });
+  animFrame=requestAnimationFrame(animLoop);
+}
+
+// Spawn loop — keeps balloon count stable, always spawns from bottom
+function startSpawnLoop(){
+  if(spawnLoop) clearInterval(spawnLoop);
+  spawnLoop=setInterval(function(){
+    if(!gameRunning) return;
+    var target=Math.min(22,10+Math.floor(difficulty*0.5));
+    var current=balloons.length;
+    if(current<target){
+      var sadCount=balloons.filter(function(b){return b.isSad;}).length;
+      // Spawn sad if none exist and not in bonus
+      makeBalloon(!bonusActive&&sadCount===0);
+    }
+  },350); // spawn check every 350ms — fast enough for smooth flow
+}
+
+function triggerBonusRound(){
+  if(!gameRunning||bonusActive) return;
+  bonusActive=true;bonusTimeLeft=6;
+  convertAllToSad();
+  setJudge('bonus',BQ[randInt(0,BQ.length)]);
+  document.getElementById('bonusBanner').style.display='block';
+  document.getElementById('bonusTxt').textContent='6';
+  if(bonusCountdown) clearInterval(bonusCountdown);
+  bonusCountdown=setInterval(function(){
+    bonusTimeLeft--;
+    document.getElementById('bonusTxt').textContent=bonusTimeLeft;
+    if(bonusTimeLeft<=0){
+      clearInterval(bonusCountdown);
+      bonusActive=false;
+      document.getElementById('bonusBanner').style.display='none';
+      setJudge('watching');
+      // Convert remaining balloons back to happy, keep one sad
+      balloons.forEach(function(b,i){
+        b.isSad=false;
+        var txt=b.el.querySelector('text');
+        if(txt) txt.textContent=HAPPY[randInt(0,HAPPY.length)];
+        var tear=b.el.querySelector('.tear');
+        if(tear) tear.parentNode.removeChild(tear);
+      });
+      setTimeout(convertOneBalloonToSad,200);
+    }
+  },1000);
+}
+
+function startGame(){
+  score=0;popped=0;bonusPopped=0;difficulty=1;
+  timeLeft=120;bonusActive=false;
+  balloons=[];
+  gameRunning=true;
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('timerBar').style.display='block';
+  document.getElementById('judgePanel').style.display='flex';
+  document.getElementById('bonusBanner').style.display='none';
+  document.getElementById('scoreD').textContent=0;
+  updateMissPips();setJudge('watching');
+  document.getElementById('gameArea').innerHTML='';
+  if(animFrame) cancelAnimationFrame(animFrame);
+  if(bonusInterval) clearInterval(bonusInterval);
+  if(timerInterval) clearInterval(timerInterval);
+
+  // Spawn initial batch staggered — one is sad
+  var initCount=12;
+  var sadIdx=randInt(0,initCount);
+  for(var i=0;i<initCount;i++){
+    (function(idx,isSad){
+      setTimeout(function(){if(gameRunning)makeBalloon(isSad);},idx*120);
+    })(i, i===sadIdx);
+  }
+
+  startSpawnLoop();
+  animFrame=requestAnimationFrame(animLoop);
+
+  if(bonusInterval) clearInterval(bonusInterval);
+  bonusInterval=setInterval(function(){if(gameRunning&&!bonusActive)triggerBonusRound();},25000);
+
+  if(timerInterval) clearInterval(timerInterval);
+  var st=Date.now();
+  timerInterval=setInterval(function(){
+    if(!gameRunning) return;
+    timeLeft=Math.max(0,60-(Date.now()-st)/1000);
+    document.getElementById('timerFill').style.width=(timeLeft/60*100)+'%';
+    if(timeLeft<=0)endGame();
+  },100);
+}
+
+function endGame(){
+  gameRunning=false;
+  cancelAnimationFrame(animFrame);
+  clearInterval(timerInterval);clearInterval(bonusInterval);
+  clearInterval(spawnLoop);clearInterval(bonusCountdown);
+  balloons.forEach(function(b){if(b.el&&b.el.parentNode)b.el.remove();});
+  balloons=[];
+  document.getElementById('hud').style.display='none';
+  document.getElementById('timerBar').style.display='none';
+  document.getElementById('judgePanel').style.display='none';
+  document.getElementById('bonusBanner').style.display='none';
+  document.getElementById('gameArea').innerHTML='';
+  document.getElementById('endScore').textContent=score;
+  document.getElementById('endPopped').textContent=popped;
+  document.getElementById('endBonus').textContent=bonusPopped;
+  var emoji,text,quote;
+  if(popped>=20){emoji='🏆';text='Balloon Hunter!';quote='"I am actually impressed." — Anto';}
+  else if(popped>=13){emoji='🎈';text='Pretty Sharp!';quote='"Not bad at all." — Anto';}
+  else if(popped>=7){emoji='😅';text='Getting There...';quote='"I have seen better UX decisions." — Anto';}
+  else if(popped>=3){emoji='😬';text='Room for Improvement';quote='"Did you even look?" — Anto';}
+  else{emoji='😢';text='The sad balloon escaped.';quote='"This is why we do QA." — Anto';}
+  document.getElementById('ratingEmoji').textContent=emoji;
+  document.getElementById('ratingText').textContent=text;
+  document.getElementById('antoQuote').textContent=quote;
+  document.getElementById('startCard').style.display='none';
+  document.getElementById('endCard').style.display='block';
+  document.getElementById('overlay').style.display='flex';
+}
+</script>
+</body>
+</html>
