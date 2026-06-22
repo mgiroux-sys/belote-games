@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Marcs Hockey Puck!</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Fredoka+One&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;overflow:hidden;width:100vw;height:100vh;user-select:none;cursor:none}
+canvas{display:block;position:absolute;top:0;left:0}
+#ui{position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:none}
+.hud{background:rgba(0,5,20,0.88);backdrop-filter:blur(6px);border-bottom:3px solid #CC0000;padding:0 20px;height:54px;display:none;align-items:center;justify-content:space-between}
+.hud-block{text-align:center;min-width:80px}
+.hud-label{font-size:9px;color:rgba(255,255,255,0.55);letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+.hud-value{font-family:'Fredoka One',cursive;font-size:24px;color:#fff;line-height:1}
+.hud-title{font-family:'Fredoka One',cursive;font-size:15px;color:#fff;text-align:center;letter-spacing:1px}
+.hud-sub{font-size:11px;color:#FFD700;text-align:center;margin-top:1px;font-family:'Fredoka One',cursive}
+#overlay{position:absolute;inset:0;background:rgba(0,0,10,0.93);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:20}
+.card{background:linear-gradient(160deg,#080010,#030008);border-radius:24px;padding:26px 34px;text-align:center;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,0.6);border:2px solid #CC0000}
+.card-title{font-family:'Fredoka One',cursive;font-size:24px;color:#CC0000;margin-bottom:10px}
+.marc-av{width:100px;height:100px;border-radius:50%;overflow:hidden;border:4px solid #CC0000;margin:0 auto 10px;box-shadow:0 0 25px rgba(200,0,0,0.5)}
+.marc-av img{width:100%;height:100%;object-fit:cover;object-position:center 10%}
+.card p{font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:12px;line-height:1.8;font-family:'Nunito',sans-serif}
+.info-pills{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;text-align:left}
+.pill{background:rgba(200,0,0,0.12);border-radius:10px;padding:8px 12px;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700;border-left:3px solid #CC0000}
+.play-btn{background:linear-gradient(135deg,#CC0000,#880000);color:#fff;border:none;border-radius:50px;padding:12px 36px;font-family:'Fredoka One',cursive;font-size:20px;cursor:pointer;box-shadow:0 6px 20px rgba(200,0,0,0.5);transition:transform .1s;pointer-events:all}
+.play-btn:hover{transform:translateY(-2px)}
+.play-btn:active{transform:scale(.97)}
+.big-score{font-family:'Fredoka One',cursive;font-size:54px;color:#CC0000;line-height:1;margin-bottom:4px}
+.score-label{font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase}
+.result-stats{display:flex;gap:8px;margin:10px 0}
+.rs{background:rgba(200,0,0,0.1);border:1px solid rgba(200,0,0,0.25);border-radius:10px;padding:8px;flex:1}
+.rs-num{font-family:'Fredoka One',cursive;font-size:20px;color:#fff}
+.rs-label{font-size:7px;color:rgba(255,255,255,0.35);margin-top:3px;letter-spacing:1px;text-transform:uppercase}
+.rating{font-size:28px;margin-bottom:4px}
+.rating-text{font-size:10px;color:#CC0000;margin-bottom:12px;line-height:1.8;font-weight:800}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="hud" id="hud">
+    <div class="hud-block"><div class="hud-label">Goals</div><div class="hud-value" id="goalsD">0</div></div>
+    <div><div class="hud-title">🏒 MARCS HOCKEY PUCK</div><div class="hud-sub" id="timerD">1:00</div></div>
+    <div class="hud-block"><div class="hud-label">Saves</div><div class="hud-value" id="savesD">0</div></div>
+  </div>
+</div>
+<div id="overlay">
+  <div class="card" id="startCard">
+    <div class="marc-av"><img id="marcStart" src="" alt="Marc"/></div>
+    <div class="card-title">MARCS HOCKEY PUCK 🏒</div>
+    <p>Marc is in net. He is absolutely terrified. You are the shooter. Aim and click to blast pucks at the net — try to score past him in 1 minute!</p>
+    <div class="info-pills">
+      <div class="pill">🖱️ Move mouse to aim at the net</div>
+      <div class="pill">🖱️ Click to shoot a puck!</div>
+      <div class="pill">🥅 Score as many goals as possible in 1 min</div>
+      <div class="pill">🧤 Marc will try to stop you... somehow</div>
+    </div>
+    <button class="play-btn" onclick="startGame()">LETS GOOO! 🏒</button>
+  </div>
+  <div class="card" id="endCard" style="display:none">
+    <div class="marc-av"><img id="marcEnd" src="" alt="Marc"/></div>
+    <div class="big-score" id="finalScore">0</div>
+    <div class="score-label">GOALS SCORED</div>
+    <div class="rating" id="ratingEmoji">🏒</div>
+    <div class="rating-text" id="ratingText"></div>
+    <div class="result-stats">
+      <div class="rs"><div class="rs-num" id="endGoals">0</div><div class="rs-label">Goals</div></div>
+      <div class="rs"><div class="rs-num" id="endShots">0</div><div class="rs-label">Shots</div></div>
+      <div class="rs"><div class="rs-num" id="endSaves">0</div><div class="rs-label">Saved</div></div>
+    </div>
+    <button class="play-btn" onclick="startGame()">PLAY AGAIN 🏒</button>
+  </div>
+</div>
+
+<script>
+var SCARED_SRC='data:image/jpeg;base64,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';
+var COVER_SRC='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCABQAFADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3wx7htIzzVqNPyoRBkcd6njX5vwr5flPTuCJj0qV1zA4/2G/kaWNce9F9cWtlavc31zDbQKpLSSuEUDHqapIk8AKgVy3xNhkufDun2kc8kDTaljehwRiCQ0v/AAsLwu1wkRurhEdsCZ4CIxz1LenvUvjSWOey0GSCRJYpL2WRXRgVYCA8gjr1r1+V31OO+hwnhTwBqOs6Ub+9eSdTA8ql3J6V5hr1i1rrV3bbceTIUI+lfZvwztI1+H8ZKDjTgOnrXzD4sskm8UaxKF4N9Lj8HI/pWdPm53qKclZHCCA+lSLAfSt6TTsDOKb9j2qTtq2yD9ElXNSIuGx6U5VGeKk2/MPrXmuJ33OK+MXjhPA3hX7TAqSapdsYrJH5AYDLSMO6qMcdyQK+QPEvim/vb83+v6s95OW3kXTl93OcbegHtwMV6H+2B4wik8cw6Pp7eZc6fbeQxzkJIx3tgeoBUfhXkPhjwfc6rJ9pvQ7luTu716FGEaUFJ7sytKpKyN+8+LBufKWXT9EdYU2RJ9nkjjGM4O1X2nGcDjpxXMaV4m1TTJ45JJPtViJZJhApxGrOMMUA4U47dK74eBbZLXHkocD0rgvGPh99Dk+1Wa4jz+9j/hI9cVvGqpO1iq1Opyrmd0j6/wDAEkT/AA3guIHDxSWEBRh3Br5onC3F3dSnrJcSN+bk16l+z14vtL/4VX+hmXF3pgVkUn70BZiCP90naf8AgPrXk1lJuiBOfmJP50qcLSZw1HZILi1AVeKY9nlVUDliFH4mr8hDMq+1XLSHzNSs4h3lB/LmicSIyPtbTW82wtpsfehU/oKtp2z2qlowAsRCD/qpZIx9A5x+mK0Ix69DXDOFmd0ZaHy8fAGh6z8R/iBqOqxmEafrDLC7OSqoRvJOevJ/Wr1mvg2zTyl1OBDnCbht3fQHk10Os6JPqXiu+u4727t01G+l+2W3mEJK8UOFBxjj5QPoK4XxH4YuJNXtLe98O6dFbuQrT2RZZUJOMhs9uvIIPpUXVSbbkepGM6EVHlXqdOthbzWjSxzR+UyEq+eCM15N4zFjdM9otzBI7nYAHByau69qPiS20XTNNlmsV026e5gilgRxPIsTkF8H5TuxxXHz6DbR3giFheRXHmZSWdg4ZuoJwFIHuDXTTjbVsxrVObRIk+Dei6ppuveIpkuI1ttHs5BdDccussTbFA78qCfTbVewbEMf0Fdx4GMcPwq8barNbPBqN5dbZyeVCrAVRVPU8licgfeFef2b4VBmu2m+bVni4hWdjXRt06/hXS+CLI6j420uyHJklVP++mC/1NclbODcDk9a9G+BCrL8Sbe6k5js43uG9gkbv/MCpq6RbM6avJH0v4KvBe6UbgkbpRFP/wB/IkJ/XNdGmNuf0rxnwzqF8NCQPfXml2sf7szRhVUJGzpzJtYDl1646cZr0vwTNdS+H7YX16l5dR5R5lXG/B4JGeuK5aiTk7HXTehzmq2Hna5qsKOYpReLNBIBnaxjU5x3HzEEdwTXJajNdPqUelzvZQXE4MYkhZpJFXHLKpGAcZ6n8677xbDLBqUtxA4D3EQK56Bh8p/pXgVra+NZtXn1dv8AQVlkYW9zKhYna2CuRnZ9OM1xRi1KSPoac1KnBtN+gnxxtINN1TQI7OHy7WwRVhRxwExtIJ9+pPrzWdrGJo4JfsFxEV7tt2fgQTxWb8ZtS8QXcFgs2o2fnIhSTY2SV7fUf1qHwpq1/qHh6W01O1MNza7drY4dSODXRBNU1cwrcvtGrWNrX4V0v4GzcESX08s0n4lFUf8AfIFeR20mNvFer/FmYQfCzT7cN944+vzr/hXj9s3T6V6FHRHz9d80rmvZyZlznpXpfwaYWmneLdYY4FtpUihvQyMkY/TdXlVsec+1ehaTP/Zf7P8A4sv87HvbiC0Q/RXc/qy0q2sbE0l7xu6Tc+KpNYOm6PaaiztONsUtsdjk4xIN4wU+b7xIGQD2r2P4UWnifT47lNZ1GB55A7w2YAd1WP5WVmGB5mQcADtz1FM03WxN4cvtPAkiS2tVigDHDRyJJlUI+vGO2KoafrdyPFUeoGY75HSSUdP3m0At9TjB/CtaWEipe91LSau0eg+NC0nhxL+zQzPb3CtKqjLSIImJUZ6HuPUgVy2nazpstncJYyxyYywU98jOf1rrbeeMazdaazLHDqEK3Nox+6rrgY/A4/A14d8RfDesWd7qN14XRBC0gF3pm4RywTZy+0ngqeCOf4sjINcOOwt6iex6uBxPLCy1OP8AG2o28+oTmeyht2jZiGzkketYljfvf2zW1mQ8MS/vJPUkZCj+v4VkeItF8SaneR21xBLYxRcu8zA49gAea7/wT4TNhoVwWiZF8p5QG68LwT7nr+NaU6S0vqTiK8pXZU0/SJb+EW91GZrVgQI3G5Tnr1qhL8MLWa6AtZLi3V0XYoIZQT355/WvZNE0WODTGeSIFba6Cvn+6yZFZ/gnWNM1PVW0aWNbW7jmkWBG6SJu3Lg+uSePTFbqrBVPZ26XOV4dype087HgXivwnqnhple4jMtnKu6G5RflYZxg/wB1geCD+tavjvfa/s/6Hp0SkyahqFxcso6lVKRj/wBANfTOpeHLe6gS2ljR4hO0pVlBBjOM8enI/KvJPif8PL/UdM0qzsJ4bdLFXS3t2UhdrMWOT2+ZyM/4VU4czTRzqPLc/9k=';
+['marcStart','marcEnd'].forEach(function(id){var el=document.getElementById(id);if(el)el.src=COVER_SRC;});
+var scaredImg=new Image();scaredImg.src=SCARED_SRC;
+
+var canvas=document.getElementById('c');
+var ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+var mouseX=canvas.width/2,mouseY=canvas.height/2;
+canvas.addEventListener('mousemove',function(e){mouseX=e.clientX;mouseY=e.clientY;});
+canvas.addEventListener('click',function(){if(gameRunning)shoot();});
+
+var pucks=[],particles=[],popTexts=[];
+var goals=0,shots=0,saves=0,goalieSkill=0;
+var gameRunning=false,timerInterval=null,animFrame=null;
+var goalieX,goalieY;
+var hitFlash=0,goalFlash=0;
+var lastShot=0;
+
+var rand=function(a,b){return Math.random()*(b-a)+a;};
+var randInt=function(a,b){return Math.floor(rand(a,b));};
+
+function getNetBounds(){
+  var W=canvas.width,H=canvas.height;
+  // Net is in the background — upper portion of screen
+  var nw=W*0.36,nh=H*0.22;
+  var nx=(W-nw)/2,ny=H*0.12;
+  return {x:nx,y:ny,w:nw,h:nh,cx:W/2,cy:ny+nh};
+}
+
+function shoot(){
+  // Only one puck at a time
+  if(pucks.some(function(p){return p.state==='flying';}))return;
+  var now=Date.now();
+  if(now-lastShot<200)return;
+  lastShot=now;
+  shots++;
+  var W=canvas.width,H=canvas.height;
+  // Puck comes from bottom-center (shooter position) toward mouse
+  var startX=W/2+(Math.random()-0.5)*60;
+  var startY=H*0.88;
+  var dx=mouseX-startX,dy=mouseY-startY;
+  var dist=Math.sqrt(dx*dx+dy*dy)||1;
+  var spd=20+Math.random()*5;
+  pucks.push({
+    x:startX,y:startY,
+    vx:dx/dist*spd,vy:dy/dist*spd,
+    size:11,spin:0,spinSpd:(Math.random()-0.5)*0.25,
+    state:'flying',alpha:1,trail:[]
+  });
+  // Ice sparks at launch
+  for(var i=0;i<6;i++){
+    var a=Math.atan2(dy,dx)+(Math.random()-0.5)*0.8;
+    particles.push({x:startX,y:startY,vx:Math.cos(a)*rand(2,5),vy:Math.sin(a)*rand(2,5),
+      life:0.7,color:'rgba(200,230,255,0.9)',r:rand(2,4)});
+  }
+}
+
+function updateGoalie(){
+  var nb=getNetBounds();
+  // Goalie tracks puck if one is heading toward net
+  var closest=null,closestDist=9999;
+  pucks.forEach(function(p){
+    if(p.state!=='flying')return;
+    var d=Math.hypot(p.x-nb.cx,p.y-nb.cy);
+    if(d<closestDist&&p.vy<0){closestDist=d;closest=p;}
+  });
+  var targetX=nb.cx;
+  if(closest&&closest.y<canvas.height*0.7){
+    targetX=closest.x;
+  }
+  var reaction=0.08+goalieSkill*0.012;
+  goalieX+=(targetX-goalieX)*reaction;
+  goalieX=Math.max(nb.x+22,Math.min(nb.x+nb.w-22,goalieX));
+  goalieY=nb.cy;
+}
+
+function updatePucks(){
+  var nb=getNetBounds();
+  var W=canvas.width,H=canvas.height;
+  pucks.forEach(function(p){
+    if(p.state!=='flying'){p.alpha-=0.07;return;}
+    p.trail.push({x:p.x,y:p.y});
+    if(p.trail.length>10)p.trail.shift();
+    p.x+=p.vx;p.y+=p.vy;
+    p.spin+=p.spinSpd;
+    // Scale puck as it travels (perspective — smaller near net)
+    var progress=Math.max(0,Math.min(1,(H*0.88-p.y)/(H*0.88-nb.cy)));
+    p.drawSize=p.size*(1-progress*0.55);
+
+    // Check goalie save
+    var goalieDist=Math.hypot(p.x-goalieX,p.y-goalieY);
+    if(goalieDist<p.drawSize+42&&p.y<nb.cy+20&&p.y>nb.y-10){
+      p.state='saved';
+      saves++;goalieSkill=Math.min(6,goalieSkill+0.4);
+      document.getElementById('savesD').textContent=saves;
+      for(var i=0;i<10;i++){
+        var a=Math.random()*Math.PI*2;
+        particles.push({x:p.x,y:p.y,vx:Math.cos(a)*rand(2,5),vy:Math.sin(a)*rand(2,5),
+          color:'rgba(200,230,255,0.9)',r:3,life:0.8});
+      }
+      var smsgs=['SAVED! 🧤','BLOCKED! 💪','NOT TODAY!','GET OUT! 🏒'];
+      popTexts.push({x:p.x,y:p.y-20,text:smsgs[randInt(0,smsgs.length)],color:'#aaddff',life:1,size:20});
+      return;
+    }
+    // Goal — entered net area without being saved
+    if(p.y<nb.cy&&p.y>nb.y&&p.x>nb.x+8&&p.x<nb.x+nb.w-8){
+      p.state='scored';
+      goals++;goalieSkill=Math.max(0,goalieSkill-0.1);
+      document.getElementById('goalsD').textContent=goals;
+      goalFlash=1;hitFlash=0;
+      for(var i=0;i<20;i++){
+        var a=Math.random()*Math.PI*2;
+        particles.push({x:p.x,y:p.y,vx:Math.cos(a)*rand(3,9),vy:Math.sin(a)*rand(3,9)-2,
+          color:['#CC0000','#FFD700','#fff','#003DA5'][i%4],r:4+Math.random()*5,life:1});
+      }
+      var gmsgs=['GOAL!! 🚨','WHAT A SHOT! 🏒','TOP SHELF! 🍁','SLAP SHOT! 💥','SNIPE! 🎯'];
+      popTexts.push({x:nb.cx,y:nb.y+nb.h/2,text:gmsgs[randInt(0,gmsgs.length)],color:'#FFD700',life:1.5,size:28});
+    }
+    // Off screen
+    if(p.y<nb.y-30||p.x<-50||p.x>W+50){p.state='missed';}
+  });
+  pucks=pucks.filter(function(p){return p.alpha>0||(p.state==='flying');});
+}
+
+// === DRAW RINK — looking from shooter end toward far net ===
+function drawRink(){
+  var W=canvas.width,H=canvas.height;
+  var nb=getNetBounds();
+
+  // Dark arena ceiling
+  ctx.fillStyle='#04000e';ctx.fillRect(0,0,W,H*0.1);
+
+  // Arena lights — realistic cone
+  [W*0.2,W*0.5,W*0.8].forEach(function(lx){
+    ctx.fillStyle='rgba(255,245,210,0.06)';
+    ctx.beginPath();ctx.moveTo(lx,0);
+    ctx.lineTo(lx-W*0.22,H*0.5);ctx.lineTo(lx+W*0.22,H*0.5);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,250,220,0.92)';
+    ctx.beginPath();ctx.ellipse(lx,5,14,5,0,0,Math.PI*2);ctx.fill();
+  });
+
+  // Crowd in background — behind net, blurred
+  var crowdY=H*0.08;
+  var crowdH=H*0.25;
+  // Crowd gradient backdrop
+  var cg=ctx.createLinearGradient(0,crowdY,0,crowdY+crowdH);
+  cg.addColorStop(0,'#1a0008');cg.addColorStop(1,'#300010');
+  ctx.fillStyle=cg;ctx.fillRect(0,crowdY,W,crowdH);
+  // Rows of blurred crowd in Canadiens red
+  for(var row=0;row<6;row++){
+    var ry=crowdY+row*(crowdH/6);
+    var rowW=W*(0.5+row*0.08);
+    var rowX=(W-rowW)/2;
+    var ph=Math.max(6,14-row*1.5);
+    var pw=Math.max(7,15-row);
+    for(var p=0;p<Math.floor(rowW/pw);p++){
+      var px=rowX+p*pw+pw/2;
+      var isRed=(p+row)%3!==1;
+      // Blurry body
+      ctx.fillStyle=isRed?'rgba(160,0,0,0.55)':'rgba(220,220,220,0.35)';
+      ctx.beginPath();ctx.ellipse(px,ry+ph*0.6,pw*0.4,ph*0.55,0,0,Math.PI*2);ctx.fill();
+      // Blurry head
+      ctx.fillStyle='rgba(200,150,100,0.3)';
+      ctx.beginPath();ctx.arc(px,ry,ph*0.35,0,Math.PI*2);ctx.fill();
+    }
+  }
+
+  // Boards behind net
+  var boardY=H*0.33;
+  ctx.fillStyle='#CC0000';ctx.fillRect(0,boardY,W,H*0.025);
+  ctx.fillStyle='#fff';ctx.fillRect(0,boardY,W,H*0.004);
+  ctx.fillStyle='#fff';ctx.fillRect(0,boardY+H*0.021,W,H*0.004);
+  // Glass above boards
+  ctx.fillStyle='rgba(200,230,255,0.08)';ctx.fillRect(0,crowdY+crowdH,W,boardY-(crowdY+crowdH));
+  ctx.strokeStyle='rgba(200,230,255,0.3)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,crowdY+crowdH);ctx.lineTo(W,crowdY+crowdH);ctx.stroke();
+
+  // ICE SURFACE — full width rectangle
+  var iceStartY=boardY+H*0.025;
+  var iceGrad=ctx.createLinearGradient(0,iceStartY,0,H);
+  iceGrad.addColorStop(0,'#b0d4ee');iceGrad.addColorStop(0.5,'#c8e6f8');iceGrad.addColorStop(1,'#d8f0ff');
+  ctx.fillStyle=iceGrad;
+  ctx.fillRect(0,iceStartY,W,H-iceStartY);
+
+  // Ice grain lines — simple vertical
+  ctx.strokeStyle='rgba(140,190,230,0.15)';ctx.lineWidth=1;
+  for(var ix=0;ix<W;ix+=18){
+    ctx.beginPath();ctx.moveTo(ix,iceStartY);ctx.lineTo(ix,H);ctx.stroke();
+  }
+
+  // === RINK MARKINGS ===
+  var glY=nb.cy+8; // goal line
+  var blY1=nb.cy+H*0.12; // near blue line — lower, closer to player
+  var blY2=nb.cy+H*0.28; // far blue line
+  var redCentreY=(blY1+blY2)/2; // centre red line
+
+  // Centre red line
+  ctx.strokeStyle='rgba(200,0,0,0.55)';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(0,redCentreY);ctx.lineTo(W,redCentreY);ctx.stroke();
+
+  // Blue lines
+  ctx.strokeStyle='rgba(30,80,210,0.65)';ctx.lineWidth=6;
+  ctx.beginPath();ctx.moveTo(0,blY1);ctx.lineTo(W,blY1);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,blY2);ctx.lineTo(W,blY2);ctx.stroke();
+
+  // Red goal line
+  ctx.strokeStyle='rgba(200,0,0,0.7)';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(0,glY);ctx.lineTo(W,glY);ctx.stroke();
+
+  // Centre circle (blue)
+  ctx.strokeStyle='rgba(30,80,210,0.5)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(nb.cx,redCentreY,H*0.1,0,Math.PI*2);ctx.stroke();
+  // Centre dot
+  ctx.fillStyle='rgba(200,0,0,0.7)';
+  ctx.beginPath();ctx.arc(nb.cx,redCentreY,5,0,Math.PI*2);ctx.fill();
+
+  // Face-off circles — near (bigger, in front)
+  var foR=H*0.1;
+  var foY=blY1+H*0.08;
+  [[W*0.28,foY],[W*0.72,foY]].forEach(function(fo){
+    ctx.strokeStyle='rgba(200,0,0,0.55)';ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(fo[0],fo[1],foR,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='rgba(200,0,0,0.6)';
+    ctx.beginPath();ctx.arc(fo[0],fo[1],5,0,Math.PI*2);ctx.fill();
+    // Cross lines inside circle
+    ctx.strokeStyle='rgba(200,0,0,0.4)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(fo[0]-foR*0.3,fo[1]-foR*0.15);ctx.lineTo(fo[0]-foR*0.3,fo[1]+foR*0.15);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(fo[0]+foR*0.3,fo[1]-foR*0.15);ctx.lineTo(fo[0]+foR*0.3,fo[1]+foR*0.15);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(fo[0]-foR*0.15,fo[1]-foR*0.3);ctx.lineTo(fo[0]+foR*0.15,fo[1]-foR*0.3);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(fo[0]-foR*0.15,fo[1]+foR*0.3);ctx.lineTo(fo[0]+foR*0.15,fo[1]+foR*0.3);ctx.stroke();
+  });
+
+  // Face-off dots near centre (smaller, further away)
+  [[W*0.38,redCentreY],[W*0.62,redCentreY]].forEach(function(d){
+    ctx.fillStyle='rgba(200,0,0,0.55)';
+    ctx.beginPath();ctx.arc(d[0],d[1],4,0,Math.PI*2);ctx.fill();
+  });
+
+  // Goal crease — blue D
+  ctx.fillStyle='rgba(30,80,200,0.13)';ctx.strokeStyle='rgba(30,80,200,0.5)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(nb.cx,nb.cy+6,nb.w*0.22,Math.PI,0);ctx.closePath();ctx.fill();ctx.stroke();
+
+  // CH logo on centre ice
+  var logoY=nb.cy+H*0.32,logoR=H*0.05;
+  ctx.save();ctx.globalAlpha=0.18;
+  // Outer C
+  ctx.strokeStyle='#CC0000';ctx.lineWidth=logoR*0.28;
+  ctx.beginPath();ctx.arc(nb.cx,logoY,logoR,Math.PI*0.3,Math.PI*1.7);ctx.stroke();
+  // Inner H — left bar
+  ctx.lineWidth=logoR*0.22;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(nb.cx-logoR*0.32,logoY-logoR*0.5);ctx.lineTo(nb.cx-logoR*0.32,logoY+logoR*0.5);ctx.stroke();
+  // Inner H — right bar
+  ctx.beginPath();ctx.moveTo(nb.cx+logoR*0.32,logoY-logoR*0.5);ctx.lineTo(nb.cx+logoR*0.32,logoY+logoR*0.5);ctx.stroke();
+  // Inner H — crossbar
+  ctx.beginPath();ctx.moveTo(nb.cx-logoR*0.32,logoY);ctx.lineTo(nb.cx+logoR*0.32,logoY);ctx.stroke();
+  ctx.restore();
+
+  // Draw single idle puck at shooter position
+  var hasFlying=pucks.some(function(p){return p.state==='flying';});
+  if(!hasFlying&&gameRunning){
+    ctx.fillStyle='#1a1a1a';ctx.strokeStyle='#555';ctx.lineWidth=2;
+    ctx.beginPath();ctx.ellipse(W/2,H*0.88,13,9,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    ctx.beginPath();ctx.ellipse(W/2-3,H*0.88-3,7,4,0.3,0,Math.PI*2);ctx.fill();
+  }
+
+  // Aim guide — dotted line from shooter to mouse
+  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1.5;ctx.setLineDash([6,5]);
+  ctx.beginPath();ctx.moveTo(W/2,H*0.88);ctx.lineTo(mouseX,mouseY);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Shooter dot at bottom
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.beginPath();ctx.arc(W/2,H*0.88,8,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(W/2,H*0.88,8,0,Math.PI*2);ctx.stroke();
+
+  // Hockey stick — always points straight up toward net
+  ctx.save();ctx.translate(mouseX,mouseY);ctx.rotate(0);
+  // Shaft
+  var sg=ctx.createLinearGradient(-4,0,4,0);
+  sg.addColorStop(0,'#4a1a05');sg.addColorStop(0.5,'#8a3810');sg.addColorStop(1,'#3a1005');
+  ctx.fillStyle=sg;ctx.strokeStyle='#2a0a02';ctx.lineWidth=1;
+  ctx.beginPath();ctx.roundRect(-4,-15,8,110,2);ctx.fill();ctx.stroke();
+  // Grip tape
+  ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=3;
+  for(var gi=0;gi<25;gi+=7){ctx.beginPath();ctx.moveTo(-4,gi-10);ctx.lineTo(4,gi-10);ctx.stroke();}
+  // Blade — wide goalie style
+  ctx.fillStyle='#333';ctx.strokeStyle='#111';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(-5,93);ctx.lineTo(30,105);ctx.lineTo(29,116);ctx.lineTo(-6,104);ctx.closePath();
+  ctx.fill();ctx.stroke();
+  // Tape on blade
+  ctx.fillStyle='rgba(255,255,255,0.15)';
+  ctx.beginPath();ctx.moveTo(-5,93);ctx.lineTo(30,105);ctx.lineTo(30,109);ctx.lineTo(-5,97);ctx.closePath();ctx.fill();
+  ctx.restore();
+
+  // Goal + hit flash
+  if(goalFlash>0){
+    goalFlash-=0.04;
+    ctx.fillStyle='rgba(255,215,0,'+(goalFlash*0.3)+')';ctx.fillRect(0,0,W,H);
+    if(goalFlash>0.6){
+      ctx.font='bold '+(H*0.05)+'px Fredoka One,cursive';ctx.textAlign='center';
+      ctx.fillStyle='rgba(255,215,0,'+(goalFlash*0.95)+')';
+      ctx.fillText('GOAL! 🚨',W/2,H*0.5);
+    }
+  }
+  if(hitFlash>0){hitFlash-=0.05;ctx.fillStyle='rgba(200,0,0,'+(hitFlash*0.3)+')';ctx.fillRect(0,0,W,H);}
+}
+
+function drawNetBack(){
+  var nb=getNetBounds();
+  var dep=nb.h*0.5;
+  var nx1=nb.x+dep*0.3,ny1=nb.y+dep*0.35,nx2=nb.x+nb.w-dep*0.3,ny2=nb.cy;
+  // Interior dark
+  ctx.fillStyle='rgba(0,0,12,0.82)';
+  ctx.beginPath();
+  ctx.moveTo(nx1,ny1);ctx.lineTo(nx2,ny1);
+  ctx.lineTo(nx2,nb.cy);ctx.lineTo(nx1,nb.cy);ctx.closePath();ctx.fill();
+  // No mesh lines — clean net interior
+  // Side panels
+  function sideFill(pts){
+    ctx.fillStyle='rgba(0,0,15,0.5)';
+    ctx.beginPath();pts.forEach(function(p,i){if(i===0)ctx.moveTo(p[0],p[1]);else ctx.lineTo(p[0],p[1]);});
+    ctx.closePath();ctx.fill();
+  }
+  sideFill([[nb.x,nb.y],[nx1,ny1],[nx1,nb.cy],[nb.x,nb.cy]]);
+  sideFill([[nb.x+nb.w,nb.y],[nx2,ny1],[nx2,nb.cy],[nb.x+nb.w,nb.cy]]);
+  // Top panel
+  ctx.fillStyle='rgba(0,0,12,0.4)';
+  ctx.beginPath();ctx.moveTo(nb.x,nb.y);ctx.lineTo(nb.x+nb.w,nb.y);
+  ctx.lineTo(nx2,ny1);ctx.lineTo(nx1,ny1);ctx.closePath();ctx.fill();
+  // Back pipe
+  ctx.strokeStyle='#888';ctx.lineWidth=5;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(nx1,ny1);ctx.lineTo(nx2,ny1);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(nx1,ny1);ctx.lineTo(nx1,nb.cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(nx2,ny1);ctx.lineTo(nx2,nb.cy);ctx.stroke();
+}
+
+function drawNetPosts(){
+  var nb=getNetBounds();
+  // Front posts — red thick pipe drawn ON TOP of goalie
+  ctx.shadowColor='rgba(200,0,0,0.5)';ctx.shadowBlur=12;
+  ctx.strokeStyle='#CC0000';ctx.lineWidth=10;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(nb.x,nb.cy);ctx.lineTo(nb.x,nb.y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(nb.x+nb.w,nb.cy);ctx.lineTo(nb.x+nb.w,nb.y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(nb.x,nb.y);ctx.lineTo(nb.x+nb.w,nb.y);ctx.stroke();
+  ctx.shadowBlur=0;
+  // Crossbar shine
+  ctx.strokeStyle='rgba(255,150,150,0.35)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(nb.x+3,nb.y-1);ctx.lineTo(nb.x+nb.w-3,nb.y-1);ctx.stroke();
+  // Post caps
+  ctx.fillStyle='#AA0000';
+  [[nb.x,nb.y],[nb.x+nb.w,nb.y],[nb.x,nb.cy],[nb.x+nb.w,nb.cy]].forEach(function(pt){
+    ctx.beginPath();ctx.arc(pt[0],pt[1],6,0,Math.PI*2);ctx.fill();
+  });
+}
+
+// Draw Marc as Canadiens goalie — looking from front
+function drawGoalie(){
+  var nb=getNetBounds();
+  var gx=goalieX,gy=goalieY;
+  var t=Date.now()*0.001;
+  var bob=Math.sin(t*2.5)*2;
+
+  // === LEG PADS — big, red/white, Canadiens style ===
+  // Left pad
+  ctx.save();
+  ctx.translate(gx-18,gy+bob);ctx.rotate(-0.1);
+  ctx.fillStyle='#CC0000';ctx.strokeStyle='#990000';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(-10,-35,22,50,6);ctx.fill();ctx.stroke();
+  // White stripes on pad
+  ctx.fillStyle='#fff';ctx.fillRect(-8,-30,18,6);ctx.fillRect(-8,-15,18,6);ctx.fillRect(-8,0,18,6);
+  // Blue accent
+  ctx.fillStyle='#003DA5';ctx.fillRect(-8,-22,18,4);
+  ctx.restore();
+  // Right pad
+  ctx.save();
+  ctx.translate(gx+18,gy+bob);ctx.rotate(0.1);
+  ctx.fillStyle='#CC0000';ctx.strokeStyle='#990000';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(-12,-35,22,50,6);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#fff';ctx.fillRect(-10,-30,18,6);ctx.fillRect(-10,-15,18,6);ctx.fillRect(-10,0,18,6);
+  ctx.fillStyle='#003DA5';ctx.fillRect(-10,-22,18,4);
+  ctx.restore();
+
+  // === BODY — white Canadiens jersey ===
+  ctx.fillStyle='#fff';ctx.strokeStyle='rgba(0,0,0,0.1)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.ellipse(gx,gy-38+bob,18,22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  // Red shoulder stripes
+  ctx.fillStyle='#CC0000';
+  ctx.beginPath();ctx.ellipse(gx-14,gy-52+bob,6,8,0.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(gx+14,gy-52+bob,6,8,-0.5,0,Math.PI*2);ctx.fill();
+  // Blue hem stripe
+  ctx.fillStyle='#003DA5';
+  ctx.beginPath();ctx.ellipse(gx,gy-20+bob,17,4,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#CC0000';
+  ctx.beginPath();ctx.ellipse(gx,gy-16+bob,17,3,0,0,Math.PI*2);ctx.fill();
+
+  // === BLOCKER — right side, boxy ===
+  ctx.fillStyle='#CC0000';ctx.strokeStyle='#880000';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(gx+16,gy-52+bob,20,16,3);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#fff';ctx.fillRect(gx+18,gy-50+bob,16,4);
+
+  // === CATCHER GLOVE — left side, rounded ===
+  ctx.fillStyle='#CC0000';ctx.strokeStyle='#880000';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(gx-22,gy-46+bob,12,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='rgba(0,0,0,0.15)';
+  ctx.beginPath();ctx.arc(gx-22,gy-50+bob,7,0,Math.PI);ctx.fill();
+
+  // === HEAD — scared face, clearly visible ===
+  // Neck
+  ctx.fillStyle='#e0b090';
+  ctx.beginPath();ctx.roundRect(gx-6,gy-64+bob,12,12,3);ctx.fill();
+  // Head with scared photo
+  ctx.save();ctx.translate(gx,gy-78+bob);
+  ctx.beginPath();ctx.arc(0,0,32,0,Math.PI*2);ctx.clip();
+  if(scaredImg.complete&&scaredImg.naturalWidth>0)ctx.drawImage(scaredImg,-32,-42,64,64);
+  else{ctx.fillStyle='#e0b090';ctx.fillRect(-32,-32,64,64);}
+  ctx.restore();
+  // White head border
+  ctx.strokeStyle='#fff';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(gx,gy-82+bob,32,0,Math.PI*2);ctx.stroke();
+
+  // === HELMET — Canadiens red/blue ===
+  // Main helmet dome
+  ctx.fillStyle='#CC0000';
+  ctx.beginPath();ctx.ellipse(gx,gy-98+bob,34,18,0,Math.PI,0);ctx.closePath();ctx.fill();
+  // Blue stripe on top
+  ctx.fillStyle='#003DA5';
+  ctx.beginPath();ctx.ellipse(gx,gy-98+bob,10,17,0,Math.PI,0);ctx.closePath();ctx.fill();
+  // White outline
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(gx,gy-98+bob,34,18,0,Math.PI,0);ctx.closePath();ctx.stroke();
+  // Cage removed — face fully visible
+
+  // === GOALIE STICK ===
+  ctx.save();ctx.translate(gx-30,gy-15+bob);ctx.rotate(-0.15);
+  // Shaft
+  var sg=ctx.createLinearGradient(-4,0,4,0);
+  sg.addColorStop(0,'#003DA5');sg.addColorStop(0.5,'#1a60d0');sg.addColorStop(1,'#002a80');
+  ctx.fillStyle=sg;ctx.strokeStyle='#002070';ctx.lineWidth=1;
+  ctx.beginPath();ctx.roundRect(-4,-55,8,70,2);ctx.fill();ctx.stroke();
+  // Wide goalie blade
+  ctx.fillStyle='#CC0000';ctx.strokeStyle='#880000';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(-4,15);ctx.lineTo(-28,22);ctx.lineTo(-30,34);ctx.lineTo(-4,28);ctx.closePath();
+  ctx.fill();ctx.stroke();
+  // Blade tape
+  ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.beginPath();ctx.moveTo(-4,15);ctx.lineTo(-28,22);ctx.lineTo(-27,26);ctx.lineTo(-4,19);ctx.closePath();ctx.fill();
+  ctx.restore();
+
+  // Shadow
+  ctx.fillStyle='rgba(0,20,60,0.2)';
+  ctx.beginPath();ctx.ellipse(gx,gy+18,32,8,0,0,Math.PI*2);ctx.fill();
+}
+
+function drawPucks(){
+  pucks.forEach(function(p){
+    if(p.alpha<=0)return;
+    var ds=p.drawSize||p.size;
+    ctx.globalAlpha=p.alpha;
+    // Trail
+    if(p.state==='flying'){
+      p.trail.forEach(function(pt,i){
+        ctx.globalAlpha=p.alpha*(i/p.trail.length)*0.35;
+        ctx.fillStyle='rgba(150,200,240,0.7)';
+        var ts=(p.drawSize||p.size)*(i/p.trail.length)*0.8;
+        ctx.beginPath();ctx.arc(pt.x,pt.y,ts,0,Math.PI*2);ctx.fill();
+      });
+    }
+    ctx.globalAlpha=p.alpha;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.spin);
+    // Shadow
+    ctx.fillStyle='rgba(0,20,60,0.25)';
+    ctx.beginPath();ctx.ellipse(2,ds+3,ds*0.9,ds*0.3,0,0,Math.PI*2);ctx.fill();
+    // Puck body
+    var pg=ctx.createLinearGradient(-ds,-ds*0.6,ds,ds*0.6);
+    pg.addColorStop(0,'#1a1a1a');pg.addColorStop(0.5,'#3d3d3d');pg.addColorStop(1,'#0d0d0d');
+    ctx.fillStyle=pg;
+    ctx.beginPath();ctx.ellipse(0,0,ds,ds*0.6,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#555';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.ellipse(0,0,ds,ds*0.6,0,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    ctx.beginPath();ctx.ellipse(-ds*0.2,-ds*0.22,ds*0.5,ds*0.2,0.3,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha=1;
+  });
+}
+
+function drawParticles(){
+  particles=particles.filter(function(p){
+    p.life-=0.04;if(p.life<=0)return false;
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.vx*=0.97;
+    ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;return true;
+  });
+}
+
+function drawPopTexts(){
+  popTexts=popTexts.filter(function(p){
+    p.life-=0.022;if(p.life<=0)return false;
+    var y=p.y-(1-Math.min(p.life,1))*50;
+    ctx.globalAlpha=Math.min(1,p.life*2);
+    ctx.font='bold '+(p.size||22)+'px Fredoka One,cursive';ctx.textAlign='center';
+    ctx.strokeStyle='rgba(0,0,20,0.9)';ctx.lineWidth=3;
+    ctx.strokeText(p.text,p.x,y);ctx.fillStyle=p.color;ctx.fillText(p.text,p.x,y);
+    ctx.globalAlpha=1;return true;
+  });
+}
+
+function gameLoop(){
+  if(!gameRunning)return;
+  updateGoalie();
+  updatePucks();
+  drawRink();
+  drawNetBack();
+  drawParticles();
+  drawGoalie();
+  drawNetPosts();
+  drawPucks();
+  drawPopTexts();
+  animFrame=requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  goals=0;shots=0;saves=0;goalieSkill=0;lastShot=0;
+  pucks=[];particles=[];popTexts=[];hitFlash=0;goalFlash=0;
+  var nb=getNetBounds();
+  goalieX=nb.cx;goalieY=nb.cy;
+  gameRunning=true;
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('goalsD').textContent='0';
+  document.getElementById('savesD').textContent='0';
+  if(timerInterval)clearInterval(timerInterval);
+  if(animFrame)cancelAnimationFrame(animFrame);
+  animFrame=requestAnimationFrame(gameLoop);
+  var st=Date.now();
+  timerInterval=setInterval(function(){
+    if(!gameRunning){clearInterval(timerInterval);return;}
+    var left=Math.max(0,60-(Date.now()-st)/1000);
+    var m=Math.floor(left/60),s=Math.ceil(left%60);
+    if(s===60){m=1;s=0;}
+    document.getElementById('timerD').textContent=m+':'+(s<10?'0':'')+s;
+    if(left<=0){clearInterval(timerInterval);endGame();}
+  },100);
+  popTexts.push({x:canvas.width/2,y:canvas.height*0.5,text:'LETS GOOO! 🏒',color:'#CC0000',life:2,size:30});
+}
+
+function endGame(){
+  gameRunning=false;
+  clearInterval(timerInterval);cancelAnimationFrame(animFrame);
+  document.getElementById('hud').style.display='none';
+  document.getElementById('finalScore').textContent=goals;
+  document.getElementById('endGoals').textContent=goals;
+  document.getElementById('endShots').textContent=shots;
+  document.getElementById('endSaves').textContent=saves;
+  var emoji,text;
+  if(goals>=12){emoji='🏆';text='NHL DRAFT INCOMING. PURE SNIPER.';}
+  else if(goals>=8){emoji='🏒';text='HAT TRICK HERO. Canada is proud.';}
+  else if(goals>=5){emoji='🍁';text='DECENT SHOWING. Gretzky is watching.';}
+  else if(goals>=2){emoji='😅';text='Marc actually held his ground.';}
+  else if(goals>=8){emoji='😭';text='Marc now needs to hand in his Canadian passport.';}  else{emoji='💀';text='Marc now needs to hand in his Canadian passport. Immediately.';}
+  document.getElementById('ratingEmoji').textContent=emoji;
+  document.getElementById('ratingText').textContent=text;
+  document.getElementById('startCard').style.display='none';
+  document.getElementById('endCard').style.display='block';
+  document.getElementById('overlay').style.display='flex';
+}
+
+window.addEventListener('resize',function(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+</script>
+</body>
+</html>
